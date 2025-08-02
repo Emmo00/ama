@@ -1,26 +1,23 @@
-import type { Metadata } from 'next';
+import type React from "react"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
 
-import '~/app/globals.css';
-import { Providers } from '~/app/providers';
-import { APP_NAME, APP_DESCRIPTION } from '~/lib/constants';
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: APP_NAME,
-  description: APP_DESCRIPTION,
-};
+  title: "AMA - Ask Me Anything on Farcaster",
+  description: "Host and join AMA sessions on Farcaster. Ask questions tip creators with USDC.",
+}
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
-      <body>
-        <Providers>
-          {children}
-        </Providers>
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
-  );
+  )
 }
