@@ -6,6 +6,7 @@
 import { simulateContract, writeContract, readContract } from "@wagmi/core";
 import { parseUnits } from "viem";
 import type { Address } from "viem";
+import { base } from "viem/chains";
 import {
   AMA_CONTRACT_ABI,
   AMA_CONTRACT_ADDRESS,
@@ -19,6 +20,8 @@ interface WagmiConfig {
   connectors: any[];
   publicClient: any;
 }
+
+config.connectors[0].getChainId = async () => base.id;
 
 async function txWrapper({
   address,

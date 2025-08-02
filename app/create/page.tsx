@@ -14,10 +14,11 @@ import { useState } from "react";
 import { createSession } from "~/onchain/writes";
 import { writeContract, waitForTransactionReceipt } from "@wagmi/core";
 import { config } from "~/components/providers/WagmiProvider";
-import { AMA_CONTRACT_ABI } from "~/lib/constants";
 import { parseEventLogs } from "viem";
 import { useAccount, useConnect } from "wagmi";
+import { readContract } from "@wagmi/core";
 import sdk from "@farcaster/miniapp-sdk";
+import { AMA_CONTRACT_ADDRESS, AMA_CONTRACT_ABI } from "~/lib/constants";
 
 export default function CreateSessionPage() {
   const { isConnected, address } = useAccount();
@@ -68,17 +69,12 @@ export default function CreateSessionPage() {
       // Redirect to the new session
       // 2. Wait until mined
       const receipt = await waitForTransactionReceipt(config, { hash: tx });
-      // 3. Extract events matching contract ABI
-      const logs = parseEventLogs({
-        abi: AMA_CONTRACT_ABI,
-        logs: receipt.logs,
-      });
-      // 4. Find create event
-      const ev = logs.find((l: any) => l.eventName === "SessionCreated");
-      console.log("event", ev);
-      const sessionId = ev?.args?.sessionId as bigint; // or undefined if
 
-      console.log("Session created with ID:", sessionId);
+      const sessionId = await readContract(config, {
+        abi: AMA_CONTRACT_ABI,
+        address: AMA_CONTRACT_ADDRESS,
+        functionName: "sessionCounter",
+      });
 
       router.push(`/session/${sessionId}`);
     } catch (error) {
