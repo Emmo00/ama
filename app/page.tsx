@@ -1,7 +1,11 @@
+"use client";
+
 import { Button } from "~/components/ui/button";
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { MessageCircle, Plus } from "lucide-react";
 import Link from "next/link";
+import sdk from "@farcaster/miniapp-sdk";
 
 // Mock data for live AMA sessions
 const liveSessions = [
@@ -56,6 +60,12 @@ const mockCurrentUser = {
 };
 
 export default function HomePage() {
+  useEffect(() => {
+    sdk.actions.ready();
+  }, []);
+
+  function handleStartAMA() {}
+
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-6xl mx-auto px-4 py-8">

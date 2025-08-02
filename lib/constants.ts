@@ -908,7 +908,7 @@ export const AMA_CONTRACT_ABI = [
   },
 ];
 
-const STABLE_ERC_CONTRACT_ABI = [
+export const STABLE_ERC_CONTRACT_ABI = [
   {
     inputs: [
       {
