@@ -4,16 +4,16 @@ import { Session, Question, Tip, ArchivedSessionStats, User, ITip, IQuestion } f
 import mongoose from 'mongoose';
 
 interface Params {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     await connectToDatabase();
     
-    const { id } = params;
+    const { id } = await params;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
@@ -76,7 +76,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     await connectToDatabase();
     
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     
     if (!mongoose.Types.ObjectId.isValid(id)) {

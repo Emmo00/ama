@@ -64,18 +64,18 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   // Get all unique FIDs for user lookup
   const allFids = React.useMemo(() => {
     const fids = new Set<string>();
-    
+
     // Add session creator FID
     if (session?.creatorFid) {
       fids.add(session.creatorFid);
     }
-    
+
     // Add question asker FIDs
-    questions.forEach(q => fids.add(q.askerFid));
-    
+    questions.forEach((q) => fids.add(q.askerFid));
+
     // Add tip sender FIDs
-    tips.forEach(t => fids.add(t.senderFid));
-    
+    tips.forEach((t) => fids.add(t.senderFid));
+
     return Array.from(fids);
   }, [session?.creatorFid, questions, tips]);
 
@@ -142,7 +142,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     }
   }, [sessionId]);
 
-  const isHost = (session?.creatorFid === currentUserFid);
+  const isHost = session?.creatorFid === currentUserFid;
 
   const handleAskQuestion = async () => {
     if (!newQuestion.trim() || !currentUserFid) return;
@@ -312,11 +312,13 @@ export default function SessionPage({ params }: { params: { id: string } }) {
           {session.description && (
             <p className="text-gray-600 mb-2">{session.description}</p>
           )}
-          
+
           {/* Creator info */}
           {session.creatorFid && (
             <p className="text-sm text-gray-500 mb-4">
-              Hosted by @{userProfiles.get(session.creatorFid)?.username || `User ${session.creatorFid}`}
+              Hosted by @
+              {userProfiles.get(session.creatorFid)?.username ||
+                `User ${session.creatorFid}`}
             </p>
           )}
 
@@ -384,19 +386,30 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                           </p>
                           <div className="flex items-center gap-2 mt-2">
                             {userProfiles.get(question.askerFid)?.pfpUrl ? (
-                              <img 
-                                src={userProfiles.get(question.askerFid)?.pfpUrl} 
-                                alt={userProfiles.get(question.askerFid)?.username}
+                              <img
+                                src={
+                                  userProfiles.get(question.askerFid)?.pfpUrl
+                                }
+                                alt={
+                                  userProfiles.get(question.askerFid)?.username
+                                }
                                 className="w-5 h-5 rounded-full"
                               />
                             ) : (
                               <div className="w-5 h-5 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                                {(userProfiles.get(question.askerFid)?.username || `U${question.askerFid}`).charAt(0).toUpperCase()}
+                                {(
+                                  userProfiles.get(question.askerFid)
+                                    ?.username || `U${question.askerFid}`
+                                )
+                                  .charAt(0)
+                                  .toUpperCase()}
                               </div>
                             )}
                             <p className="text-sm text-gray-500">
-                              Asked by @{userProfiles.get(question.askerFid)?.username || `User ${question.askerFid}`} •{" "}
-                              {new Date(question.createdAt).toLocaleString()}
+                              Asked by @
+                              {userProfiles.get(question.askerFid)?.username ||
+                                `User ${question.askerFid}`}{" "}
+                              • {new Date(question.createdAt).toLocaleString()}
                             </p>
                           </div>
                         </div>
@@ -471,18 +484,23 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                           className="flex items-center gap-2 text-sm"
                         >
                           {tipper?.pfpUrl ? (
-                            <img 
-                              src={tipper.pfpUrl} 
+                            <img
+                              src={tipper.pfpUrl}
                               alt={tipper.username}
                               className="w-6 h-6 rounded-full"
                             />
                           ) : (
                             <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                              {(tipper?.username || `U${tip.senderFid}`).charAt(0).toUpperCase()}
+                              {(tipper?.username || `U${tip.senderFid}`)
+                                .charAt(0)
+                                .toUpperCase()}
                             </div>
                           )}
                           <span className="text-gray-600">
-                            <span className="font-medium">@{tipper?.username || `User ${tip.senderFid}`}</span> just tipped{" "}
+                            <span className="font-medium">
+                              @{tipper?.username || `User ${tip.senderFid}`}
+                            </span>{" "}
+                            just tipped{" "}
                             <span className="font-medium text-green-600">
                               ${tip.amount}
                             </span>

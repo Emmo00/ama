@@ -141,31 +141,3 @@ export const SIGNED_KEY_REQUEST_TYPE = [
   { name: "key", type: "bytes" },
   { name: "deadline", type: "uint256" },
 ];
-
-export const AMA_TIPPING_CONTRACT_ADDRESSES ={
- BASE: "0xe3e8149d99dD242A7ce90A342a087cBF427237Fc" as `0x${string}`,
- CELO: "0x1c2b3d8f4e5a6c7d8e9f0a1b2c3d4e5f6a7b8c9d" as `0x${string}`,
-}
-
-export const SUPPORTED_TIPPING_TOKENS = [
-  {
-    name: "USDC",
-    symbol: "USDC",
-    decimals: 6,
-    address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`,
-    chainId: 8453,
-    logoURI:
-      "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
-    chainName: "BASE",
-  },
-  {
-    name: "Celo Dollar",
-    symbol: "CUSD",
-    decimals: 18,
-    address: "0x765DE816845861e75A25fCA122bb6898B8B1282a" as `0x${string}`,
-    chainId: 42220,
-    logoURI:
-      "https://raw.githubusercontent.com/mento-protocol/mento-web/refs/heads/main/public/tokens/cUSD.svg",
-    chainName: "CELO",
-  },
-];

@@ -67,9 +67,6 @@ This document describes the backend implementation for the AMA (Ask Me Anything)
 - `GET` - List tips with optional filtering by session or sender
 - `POST` - Record a new tip
 
-### Best Friends (`/api/best-friends`)
-- `GET` - Get users who interact most with a user's sessions
-
 ## Environment Variables
 
 Create a `.env.local` file with:

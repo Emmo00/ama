@@ -4,6 +4,7 @@ export interface IUser extends Document {
   fid: string;
   username: string;
   pfpUrl?: string;
+  walletAddress?: string;
   createdAt: Date;
 }
 
@@ -21,6 +22,11 @@ const UserSchema: Schema = new Schema({
   pfpUrl: {
     type: String,
     required: false,
+  },
+  walletAddress: {
+    type: String,
+    required: false,
+    index: true,
   },
   createdAt: {
     type: Date,

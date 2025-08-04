@@ -74,11 +74,15 @@ export const POST = withQuickAuth(async (quickAuthUser: QuickAuthUser, request: 
   try {
     await connectToDatabase()
 
-    // Extract user data from Quick Auth user
+    // Get request body for optional fields like walletAddress
+    const body = await request.json().catch(() => ({}));
+    
+    // Extract user data from Quick Auth user and request body
     const userData = {
       fid: quickAuthUser.fid.toString(),
       username: quickAuthUser.username || `user-${quickAuthUser.fid}`,
       pfpUrl: quickAuthUser.pfpUrl,
+      walletAddress: body.walletAddress || undefined,
     }
 
     // Find existing user or create new one
@@ -95,6 +99,10 @@ export const POST = withQuickAuth(async (quickAuthUser: QuickAuthUser, request: 
         user.pfpUrl = userData.pfpUrl
         updated = true
       }
+      if (userData.walletAddress && user.walletAddress !== userData.walletAddress) {
+        user.walletAddress = userData.walletAddress
+        updated = true
+      }
       if (updated) {
         await user.save()
       }
@@ -109,6 +117,7 @@ export const POST = withQuickAuth(async (quickAuthUser: QuickAuthUser, request: 
         fid: user.fid,
         username: user.username,
         pfpUrl: user.pfpUrl,
+        walletAddress: user.walletAddress,
         createdAt: user.createdAt,
       }),
       { 

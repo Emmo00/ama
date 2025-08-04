@@ -1,13 +1,48 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IToken {
+  symbol: string;
+  name: string;
+  address: string;
+  decimals: number;
+  chainId: number;
+}
+
 export interface ITip extends Document {
   _id: mongoose.Types.ObjectId;
   sessionId: mongoose.Types.ObjectId;
   senderFid: string;
-  amount: number;
+  recipientFid: string;
+  amount: string;
+  amountFormatted: string;
+  token?: IToken;
   txHash: string;
+  verified: boolean;
   createdAt: Date;
 }
+
+const TokenSchema: Schema = new Schema({
+  symbol: {
+    type: String,
+    required: true,
+  },
+  name: {
+    type: String,
+    required: true,
+  },
+  address: {
+    type: String,
+    required: true,
+  },
+  decimals: {
+    type: Number,
+    required: true,
+  },
+  chainId: {
+    type: Number,
+    required: true,
+  },
+}, { _id: false });
 
 const TipSchema: Schema = new Schema({
   sessionId: {
@@ -21,16 +56,32 @@ const TipSchema: Schema = new Schema({
     required: true,
     index: true,
   },
-  amount: {
-    type: Number,
+  recipientFid: {
+    type: String,
     required: true,
-    min: 0,
+    index: true,
+  },
+  amount: {
+    type: String,
+    required: true,
+  },
+  amountFormatted: {
+    type: String,
+    required: false,
+  },
+  token: {
+    type: TokenSchema,
+    required: false,
   },
   txHash: {
     type: String,
     required: true,
     unique: true,
     index: true,
+  },
+  verified: {
+    type: Boolean,
+    default: false,
   },
   createdAt: {
     type: Date,

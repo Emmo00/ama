@@ -4,16 +4,16 @@ import { Question, Session } from '~/lib/models';
 import mongoose from 'mongoose';
 
 interface Params {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     await connectToDatabase();
     
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { answer, creatorFid } = body;
     
