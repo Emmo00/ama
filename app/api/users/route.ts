@@ -33,7 +33,27 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .select('fid username pfpUrl createdAt')
 
-    return new Response(JSON.stringify(users), {
+    // If searching by FID, return single user object
+    if (fid && users.length > 0) {
+      return new Response(JSON.stringify({ user: users[0] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // If searching by FID and no user found
+    if (fid && users.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'User not found' }),
+        { 
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // For all other queries, return array
+    return new Response(JSON.stringify({ users }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     })

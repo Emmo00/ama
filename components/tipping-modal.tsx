@@ -76,11 +76,6 @@ export default function TippingModal({ isOpen, onClose, sessionId, onTipSuccess 
       
       setIsSuccess(true)
       onTipSuccess?.(tip);
-      
-      // Auto close after 2 seconds
-      setTimeout(() => {
-        handleClose()
-      }, 2000)
     } catch (err) {
       console.error('Error sending tip:', err);
       setError(err instanceof Error ? err.message : 'Failed to send tip');

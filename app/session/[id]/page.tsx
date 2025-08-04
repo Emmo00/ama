@@ -8,6 +8,7 @@ import { Textarea } from "~/components/ui/textarea";
 import TippingModal from "~/components/tipping-modal";
 import { ArrowLeft, MessageCircle, Send, Share2 } from "lucide-react";
 import sdk from "@farcaster/miniapp-sdk";
+import { useUserProfiles } from "~/hooks/useUserProfile";
 
 interface Session {
   _id: string;
@@ -59,6 +60,27 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const [currentUserFid, setCurrentUserFid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Get all unique FIDs for user lookup
+  const allFids = React.useMemo(() => {
+    const fids = new Set<string>();
+    
+    // Add session creator FID
+    if (session?.creatorFid) {
+      fids.add(session.creatorFid);
+    }
+    
+    // Add question asker FIDs
+    questions.forEach(q => fids.add(q.askerFid));
+    
+    // Add tip sender FIDs
+    tips.forEach(t => fids.add(t.senderFid));
+    
+    return Array.from(fids);
+  }, [session?.creatorFid, questions, tips]);
+
+  // Fetch user profiles for all FIDs
+  const { users: userProfiles } = useUserProfiles(allFids);
 
   // Initialize user context
   useEffect(() => {
@@ -288,7 +310,14 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             {session.title}
           </h1>
           {session.description && (
-            <p className="text-gray-600">{session.description}</p>
+            <p className="text-gray-600 mb-2">{session.description}</p>
+          )}
+          
+          {/* Creator info */}
+          {session.creatorFid && (
+            <p className="text-sm text-gray-500 mb-4">
+              Hosted by @{userProfiles.get(session.creatorFid)?.username || `User ${session.creatorFid}`}
+            </p>
           )}
 
           {stats && (
@@ -337,7 +366,11 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                 <Card>
                   <CardContent className="p-6 text-center text-gray-500">
                     <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p>No questions yet. Be the first to ask!</p>
+                    {session.status === "ENDED" ? (
+                      <p>No Questions</p>
+                    ) : (
+                      <p>No questions yet. Be the first to ask!</p>
+                    )}
                   </CardContent>
                 </Card>
               ) : (
@@ -349,10 +382,23 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                           <p className="text-black font-medium">
                             {question.content}
                           </p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Asked by User {question.askerFid} •{" "}
-                            {new Date(question.createdAt).toLocaleString()}
-                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            {userProfiles.get(question.askerFid)?.pfpUrl ? (
+                              <img 
+                                src={userProfiles.get(question.askerFid)?.pfpUrl} 
+                                alt={userProfiles.get(question.askerFid)?.username}
+                                className="w-5 h-5 rounded-full"
+                              />
+                            ) : (
+                              <div className="w-5 h-5 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                                {(userProfiles.get(question.askerFid)?.username || `U${question.askerFid}`).charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <p className="text-sm text-gray-500">
+                              Asked by @{userProfiles.get(question.askerFid)?.username || `User ${question.askerFid}`} •{" "}
+                              {new Date(question.createdAt).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
 
                         {question.answer ? (
@@ -417,19 +463,33 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                 <CardContent className="p-6">
                   <h3 className="font-semibold text-black mb-4">Recent Tips</h3>
                   <div className="space-y-3">
-                    {tips.slice(0, 5).map((tip) => (
-                      <div
-                        key={tip._id}
-                        className="flex justify-between items-center text-sm"
-                      >
-                        <span className="text-gray-600">
-                          User {tip.senderFid}
-                        </span>
-                        <span className="font-medium text-green-600">
-                          ${tip.amount}
-                        </span>
-                      </div>
-                    ))}
+                    {tips.slice(0, 5).map((tip) => {
+                      const tipper = userProfiles.get(tip.senderFid);
+                      return (
+                        <div
+                          key={tip._id}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          {tipper?.pfpUrl ? (
+                            <img 
+                              src={tipper.pfpUrl} 
+                              alt={tipper.username}
+                              className="w-6 h-6 rounded-full"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                              {(tipper?.username || `U${tip.senderFid}`).charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-gray-600">
+                            <span className="font-medium">@{tipper?.username || `User ${tip.senderFid}`}</span> just tipped{" "}
+                            <span className="font-medium text-green-600">
+                              ${tip.amount}
+                            </span>
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
