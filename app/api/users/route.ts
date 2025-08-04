@@ -1,38 +1,90 @@
-import { NeynarAPIClient } from '@neynar/nodejs-sdk';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import connectToDatabase from '~/lib/mongodb';
+import { User } from '~/lib/models';
 
-export async function GET(request: Request) {
-  const apiKey = process.env.NEYNAR_API_KEY;
-  const { searchParams } = new URL(request.url);
-  const fids = searchParams.get('fids');
-  
-  if (!apiKey) {
+export async function GET(request: NextRequest) {
+  try {
+    await connectToDatabase();
+    
+    const { searchParams } = new URL(request.url);
+    const fid = searchParams.get('fid');
+    const username = searchParams.get('username');
+    
+    if (fid) {
+      const user = await User.findOne({ fid });
+      if (!user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({ user });
+    }
+    
+    if (username) {
+      const user = await User.findOne({ username });
+      if (!user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({ user });
+    }
+    
+    // If no specific user requested, return recent users
+    const users = await User.find()
+      .sort({ createdAt: -1 })
+      .limit(50);
+    
+    return NextResponse.json({ users });
+  } catch (error) {
+    console.error('Error fetching users:', error);
     return NextResponse.json(
-      { error: 'Neynar API key is not configured. Please add NEYNAR_API_KEY to your environment variables.' },
+      { error: 'Failed to fetch users' },
       { status: 500 }
     );
   }
+}
 
-  if (!fids) {
-    return NextResponse.json(
-      { error: 'FIDs parameter is required' },
-      { status: 400 }
-    );
-  }
-
+export async function POST(request: NextRequest) {
   try {
-    const neynar = new NeynarAPIClient({ apiKey });
-    const fidsArray = fids.split(',').map(fid => parseInt(fid.trim()));
+    await connectToDatabase();
     
-    const { users } = await neynar.fetchBulkUsers({
-      fids: fidsArray,
+    const body = await request.json();
+    const { fid, username, pfpUrl } = body;
+    
+    if (!fid || !username) {
+      return NextResponse.json(
+        { error: 'Missing required fields: fid, username' },
+        { status: 400 }
+      );
+    }
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({ fid });
+    if (existingUser) {
+      // Update profile picture if provided and different
+      if (pfpUrl && existingUser.pfpUrl !== pfpUrl) {
+        existingUser.pfpUrl = pfpUrl;
+        await existingUser.save();
+      }
+      return NextResponse.json({ user: existingUser });
+    }
+    
+    const user = new User({
+      fid,
+      username,
+      pfpUrl,
     });
-
-    return NextResponse.json({ users });
+    
+    await user.save();
+    
+    return NextResponse.json({ user }, { status: 201 });
   } catch (error) {
-    console.error('Failed to fetch users:', error);
+    console.error('Error creating user:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch users. Please check your Neynar API key and try again.' },
+      { error: 'Failed to create user' },
       { status: 500 }
     );
   }

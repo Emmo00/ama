@@ -1,301 +1,422 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useAccount, useConnect } from "wagmi";
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import TippingModal from "~/components/tipping-modal";
 import { ArrowLeft, MessageCircle, Send, Share2 } from "lucide-react";
-import {
-  getSessionDetails,
-  getSessionQuestions,
-  getQuestionAnswers,
-  askQuestion,
-  postAnswer,
-  endSession,
-  tipCreator,
-} from "~/onchain/writes"; // adjust path as needed
+import sdk from "@farcaster/miniapp-sdk";
+
+interface Session {
+  _id: string;
+  creatorFid: string;
+  title: string;
+  description: string;
+  status: 'LIVE' | 'ENDED';
+  createdAt: string;
+  endsAt: string;
+}
+
+interface Question {
+  _id: string;
+  sessionId: string;
+  askerFid: string;
+  content: string;
+  answer?: string;
+  createdAt: string;
+}
+
+interface Tip {
+  _id: string;
+  sessionId: string;
+  senderFid: string;
+  amount: number;
+  txHash: string;
+  createdAt: string;
+}
+
+interface SessionStats {
+  totalTips: number;
+  totalQuestions: number;
+  totalParticipants: number;
+}
 
 export default function SessionPage({ params }: { params: { id: string } }) {
-  const sessionId = Number(params.id);
-  const { isConnected, address } = useAccount();
-  const { connect, connectors } = useConnect();
+  const sessionId = params.id;
 
-  const [session, setSession] = useState<{
-    creator: string;
-    title: string;
-    description: string;
-    active: boolean;
-  } | null>(null);
-
-  const [questions, setQuestions] = useState<
-    {
-      questionId: number;
-      asker: string;
-      content: string;
-      timestamp: number;
-      answer?: string;
-    }[]
-  >([]);
-
-  const [answersInput, setAnswersInput] = useState<{ [key: number]: string }>(
-    {}
-  );
+  const [session, setSession] = useState<Session | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [tips, setTips] = useState<Tip[]>([]);
+  const [stats, setStats] = useState<SessionStats | null>(null);
+  const [answersInput, setAnswersInput] = useState<{ [key: string]: string }>({});
   const [newQuestion, setNewQuestion] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTippingModal, setShowTippingModal] = useState(false);
-  const [sessionEnded, setSessionEnded] = useState(false);
+  const [currentUserFid, setCurrentUserFid] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const isHost = session?.creator?.toLowerCase() === address?.toLowerCase();
-
-  // Load session details and questions
+  // Initialize user context
   useEffect(() => {
-    if (!sessionId) return;
+    const initializeUser = async () => {
+      try {
+        const context = await sdk.context;
+        const userFid = context?.user?.fid?.toString();
+        const username = context?.user?.username;
+        const pfpUrl = context?.user?.pfpUrl;
+        
+        if (userFid && username) {
+          setCurrentUserFid(userFid);
+          
+          // Create user if not exists
+          await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fid: userFid, username, pfpUrl }),
+          }).catch(() => {
+            // User might already exist
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing user:', error);
+      }
+    };
 
-    async function fetchSession() {
-      const details: any = await getSessionDetails(sessionId);
-      setSession({
-        creator: details[0],
-        title: details[1],
-        description: details[2],
-        active: details[3],
-      });
-      setSessionEnded(!details[3]);
+    initializeUser();
+  }, []);
+
+  // Load session data
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/sessions/${sessionId}`);
+        
+        if (!response.ok) {
+          throw new Error('Session not found');
+        }
+        
+        const data = await response.json();
+        setSession(data.session);
+        setQuestions(data.questions);
+        setTips(data.tips);
+        setStats(data.stats);
+      } catch (error) {
+        console.error('Error loading session:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load session');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (sessionId) {
+      loadSession();
     }
-
-    async function fetchQuestions() {
-      const qs: any[] = await getSessionQuestions(sessionId);
-      const enriched = await Promise.all(
-        qs.map(async (q) => {
-          const ansRes: any[] = await getQuestionAnswers(q.questionId);
-          const firstAnswer = ansRes[0]?.content ?? "";
-          return { ...q, answer: firstAnswer };
-        })
-      );
-      setQuestions(enriched);
-    }
-
-    fetchSession();
-    fetchQuestions();
   }, [sessionId]);
 
-  const handleQuestionSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newQuestion.trim()) return;
-    if (!isConnected) {
-      connect({ connector: connectors[0] });
-      return;
-    }
+  const isHost = session?.creatorFid === currentUserFid;
+
+  const handleAskQuestion = async () => {
+    if (!newQuestion.trim() || !currentUserFid) return;
+
     setIsSubmitting(true);
-    await askQuestion(sessionId, newQuestion);
-    setNewQuestion("");
-    setIsSubmitting(false);
-    await new Promise((r) => setTimeout(r, 1000)); // wait for chain to update
-    window.location.reload();
+    try {
+      const response = await fetch('/api/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          askerFid: currentUserFid,
+          content: newQuestion.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit question');
+      }
+
+      const { question } = await response.json();
+      setQuestions(prev => [question, ...prev]);
+      setNewQuestion("");
+    } catch (error) {
+      console.error('Error asking question:', error);
+      alert(error instanceof Error ? error.message : 'Failed to submit question');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleAnswerSubmit = async (questionId: number) => {
+  const handleAnswerQuestion = async (questionId: string) => {
     const answer = answersInput[questionId];
-    if (!answer?.trim()) return;
-    await postAnswer(sessionId, questionId, answer);
-    setAnswersInput({ ...answersInput, [questionId]: "" });
-    await new Promise((r) => setTimeout(r, 1000));
-    window.location.reload();
+    if (!answer?.trim() || !currentUserFid) return;
+
+    try {
+      const response = await fetch(`/api/questions/${questionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          answer: answer.trim(),
+          creatorFid: currentUserFid,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit answer');
+      }
+
+      const { question } = await response.json();
+      setQuestions(prev => 
+        prev.map(q => q._id === questionId ? question : q)
+      );
+      setAnswersInput(prev => ({ ...prev, [questionId]: "" }));
+    } catch (error) {
+      console.error('Error answering question:', error);
+      alert(error instanceof Error ? error.message : 'Failed to submit answer');
+    }
   };
 
   const handleEndSession = async () => {
-    if (!isConnected) {
-      connect({ connector: connectors[0] });
-      return;
+    if (!currentUserFid || !isHost) return;
+
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'ENDED' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to end session');
+      }
+
+      const { session: updatedSession } = await response.json();
+      setSession(updatedSession);
+    } catch (error) {
+      console.error('Error ending session:', error);
+      alert(error instanceof Error ? error.message : 'Failed to end session');
     }
-    await endSession(sessionId);
-    alert("Session ended successfully!");
-    setSessionEnded(true);
   };
 
-  const handleShareSession = () => {
-    const sessionUrl = window.location.href;
-    navigator.clipboard.writeText(sessionUrl);
-    alert(`Link copied to clipboard!\n${sessionUrl}`);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !session) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || 'Session not found'}</p>
+          <Link href="/">
+            <Button>Back to Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <Link
-          href="/"
-          className="inline-flex items-center text-gray-600 hover:text-black mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Home
-        </Link>
-
-        {session && (
-          <>
-            <div className="mb-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    session.active
-                      ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800"
-                      : "bg-gradient-to-r from-red-100 to-pink-100 text-red-800"
-                  }`}
-                >
-                  {session.active ? "LIVE" : "ENDED"}
-                </span>
-                <div className="flex items-center text-gray-500">
-                  <MessageCircle className="w-4 h-4 mr-1" />
-                  {questions.length} questions
-                </div>
-              </div>
-              <h1 className="text-3xl font-bold text-black mb-2">
-                {session.title}
-              </h1>
-              <p className="text-gray-600 mb-4">{session.description}</p>
-            </div>
-
-            <div className="flex justify-end gap-3 mb-6">
-              {isHost && session.active && (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <Link
+            href="/"
+            className="inline-flex items-center text-gray-600 hover:text-black transition-colors mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Home
+          </Link>
+          
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  session.status === 'LIVE'
+                    ? "bg-green-100 text-green-800"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+              >
+                {session.status === 'LIVE' ? "LIVE" : "ENDED"}
+              </span>
+              {isHost && session.status === 'LIVE' && (
                 <Button
                   onClick={handleEndSession}
                   variant="outline"
-                  className="text-red-600 border-red-200"
+                  size="sm"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
                 >
                   End Session
                 </Button>
               )}
-              <Button
-                onClick={handleShareSession}
-                variant="outline"
-                className="text-gray-600 border-gray-200"
-              >
-                <Share2 className="w-4 h-4 mr-2" /> Share AMA
-              </Button>
-              {session.active && (
-                <Button
-                  onClick={() => setShowTippingModal(true)}
-                  className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white"
-                >
-                  💸 Tip Creator
-                </Button>
-              )}
             </div>
-
-            {/* Questions */}
-            <div className="space-y-6 mb-8">
-              {questions.map((q) => (
-                <Card
-                  key={q.questionId}
-                  className="border border-gray-100 shadow-sm"
-                >
-                  <CardContent className="p-6">
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-black">
-                          @{q.asker}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {new Date(q.timestamp * 1000).toLocaleTimeString()}
-                        </span>
-                      </div>
-                      <p className="text-gray-800">{q.content}</p>
-                    </div>
-                    {q.answer ? (
-                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border-l-4 border-purple-500">
-                        <div className="flex items-center mb-2">
-                          <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2">
-                            {session.creator.slice(2, 4).toUpperCase()}
-                          </div>
-                          <span className="font-medium text-black">@host</span>
-                        </div>
-                        <p className="text-gray-800">{q.answer}</p>
-                      </div>
-                    ) : isHost && session.active ? (
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Type your answer…"
-                          value={answersInput[q.questionId] || ""}
-                          onChange={(e) =>
-                            setAnswersInput({
-                              ...answersInput,
-                              [q.questionId]: e.target.value,
-                            })
-                          }
-                          className="flex-1"
-                        />
-                        <Button
-                          onClick={() => handleAnswerSubmit(q.questionId)}
-                          disabled={!answersInput[q.questionId]?.trim()}
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                        >
-                          <Send className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-gray-600 italic">
-                          Waiting for answer…
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+            <Button variant="outline" size="sm">
+              <Share2 className="w-4 h-4 mr-2" />
+              Share
+            </Button>
+          </div>
+          
+          <h1 className="text-3xl font-bold text-black mb-2">{session.title}</h1>
+          {session.description && (
+            <p className="text-gray-600">{session.description}</p>
+          )}
+          
+          {stats && (
+            <div className="flex items-center space-x-6 mt-4 text-sm text-gray-600">
+              <span>{stats.totalQuestions} questions</span>
+              <span>${stats.totalTips} tips</span>
+              <span>{stats.totalParticipants} participants</span>
             </div>
+          )}
+        </div>
 
-            {/* Ask question */}
-            {!isHost && session.active && (
-              <Card className="border border-gray-200 shadow-lg">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Questions Column */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Ask Question Form */}
+            {session.status === 'LIVE' && currentUserFid && (
+              <Card>
                 <CardContent className="p-6">
-                  <form onSubmit={handleQuestionSubmit}>
+                  <h3 className="font-semibold text-black mb-4">Ask a Question</h3>
+                  <div className="space-y-4">
                     <Textarea
-                      placeholder="Ask your question…"
+                      placeholder="What would you like to know?"
                       value={newQuestion}
                       onChange={(e) => setNewQuestion(e.target.value)}
-                      className="min-h-[100px]"
-                      rows={4}
+                      className="resize-none"
+                      rows={3}
                     />
-                    <div className="flex justify-end mt-4">
-                      <Button
-                        type="submit"
-                        disabled={!newQuestion.trim() || isSubmitting}
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                      >
-                        {isSubmitting ? (
-                          "Submitting..."
-                        ) : (
-                          <Send className="w-4 h-4 mr-2" />
-                        )}
-                        {!isSubmitting && "Submit Question"}
-                      </Button>
-                    </div>
-                  </form>
+                    <Button
+                      onClick={handleAskQuestion}
+                      disabled={isSubmitting || !newQuestion.trim()}
+                      className="w-full"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      {isSubmitting ? "Submitting..." : "Ask Question"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
 
-            {sessionEnded && (
-              <Card className="border border-gray-200 bg-gray-50">
-                <CardContent className="p-6 text-center">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                    Session Ended
-                  </h3>
-                  <p className="text-gray-600">
-                    This AMA session has ended. Thank you!
-                  </p>
+            {/* Questions List */}
+            <div className="space-y-4">
+              {questions.length === 0 ? (
+                <Card>
+                  <CardContent className="p-6 text-center text-gray-500">
+                    <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>No questions yet. Be the first to ask!</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                questions.map((question) => (
+                  <Card key={question._id}>
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-black font-medium">{question.content}</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Asked by User {question.askerFid} • {new Date(question.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+
+                        {question.answer ? (
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <p className="text-purple-900">{question.answer}</p>
+                          </div>
+                        ) : isHost && session.status === 'LIVE' ? (
+                          <div className="space-y-3">
+                            <Textarea
+                              placeholder="Type your answer..."
+                              value={answersInput[question._id] || ""}
+                              onChange={(e) =>
+                                setAnswersInput(prev => ({
+                                  ...prev,
+                                  [question._id]: e.target.value
+                                }))
+                              }
+                              className="resize-none"
+                              rows={2}
+                            />
+                            <Button
+                              onClick={() => handleAnswerQuestion(question._id)}
+                              disabled={!answersInput[question._id]?.trim()}
+                              size="sm"
+                            >
+                              Submit Answer
+                            </Button>
+                          </div>
+                        ) : (
+                          <p className="text-gray-500 italic">Waiting for answer...</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Tip Button */}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <h3 className="font-semibold text-black mb-4">Support the Creator</h3>
+                <Button
+                  onClick={() => setShowTippingModal(true)}
+                  className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600"
+                >
+                  💰 Send Tip
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Recent Tips */}
+            {tips.length > 0 && (
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="font-semibold text-black mb-4">Recent Tips</h3>
+                  <div className="space-y-3">
+                    {tips.slice(0, 5).map((tip) => (
+                      <div key={tip._id} className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600">User {tip.senderFid}</span>
+                        <span className="font-medium text-green-600">${tip.amount}</span>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             )}
-          </>
-        )}
+          </div>
+        </div>
       </div>
 
+      {/* Tipping Modal */}
       <TippingModal
         isOpen={showTippingModal}
         onClose={() => setShowTippingModal(false)}
-        creatorName={session?.creator || ""}
+        sessionId={sessionId}
+        onTipSuccess={(tip) => {
+          setTips(prev => [tip, ...prev]);
+          if (stats) {
+            setStats(prev => prev ? {
+              ...prev,
+              totalTips: prev.totalTips + tip.amount
+            } : null);
+          }
+        }}
       />
     </div>
   );

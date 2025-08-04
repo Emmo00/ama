@@ -11,29 +11,20 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createSession } from "~/onchain/writes";
-import { writeContract, waitForTransactionReceipt } from "@wagmi/core";
-import { config } from "~/components/providers/WagmiProvider";
-import { parseEventLogs } from "viem";
-import { useAccount, useConnect } from "wagmi";
-import { readContract } from "@wagmi/core";
 import sdk from "@farcaster/miniapp-sdk";
-import { AMA_CONTRACT_ADDRESS, AMA_CONTRACT_ABI } from "~/lib/constants";
 
 export default function CreateSessionPage() {
-  const { isConnected, address } = useAccount();
-  const { connect, connectors } = useConnect();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ title?: string }>({});
+  const [errors, setErrors] = useState<{ title?: string; general?: string }>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
-    const newErrors: { title?: string } = {};
+    const newErrors: { title?: string; general?: string } = {};
     if (!title.trim()) {
       newErrors.title = "Title is required";
     }
@@ -44,42 +35,61 @@ export default function CreateSessionPage() {
     }
 
     setIsSubmitting(true);
+    setErrors({});
 
-    if (!isConnected) {
-      // Prompt user to connect wallet
-      connect({
-        connector: connectors[0],
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    // perform the transaction to create the session
     try {
-      const tx = await createSession(
-        (
-          await sdk.context
-        )?.user?.username!,
-        title,
-        description
-      );
-      console.log("Transaction sent:", tx);
-      // Optionally wait for confirmation or handle the transaction result
+      // Get user context from Farcaster SDK
+      const context = await sdk.context;
+      const userFid = context?.user?.fid?.toString();
+      const username = context?.user?.username;
+      const pfpUrl = context?.user?.pfpUrl;
 
-      // Redirect to the new session
-      // 2. Wait until mined
-      const receipt = await waitForTransactionReceipt(config, { hash: tx });
+      if (!userFid || !username) {
+        throw new Error("Unable to get user information from Farcaster");
+      }
 
-      const sessionId = await readContract(config, {
-        abi: AMA_CONTRACT_ABI,
-        address: AMA_CONTRACT_ADDRESS,
-        functionName: "sessionCounter",
+      // Create user if not exists
+      await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fid: userFid,
+          username: username,
+          pfpUrl: pfpUrl,
+        }),
+      }).catch(() => {
+        // User might already exist, which is fine
       });
 
-      router.push(`/session/${sessionId}`);
+      // Create session
+      const sessionResponse = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          creatorFid: userFid,
+          title: title.trim(),
+          description: description.trim(),
+        }),
+      });
+
+      if (!sessionResponse.ok) {
+        const errorData = await sessionResponse.json();
+        throw new Error(errorData.error || 'Failed to create session');
+      }
+
+      const { session } = await sessionResponse.json();
+      
+      // Redirect to the new session
+      router.push(`/session/${session._id}`);
     } catch (error) {
       console.error("Error creating session:", error);
-      setErrors({ title: "Failed to create session. Please try again." });
+      setErrors({ 
+        general: error instanceof Error ? error.message : "Failed to create session. Please try again." 
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -114,6 +124,13 @@ export default function CreateSessionPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* General Error */}
+              {errors.general && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{errors.general}</p>
+                </div>
+              )}
+              
               {/* Title Field */}
               <div className="space-y-2">
                 <Label
