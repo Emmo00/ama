@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '~/lib/mongodb';
-import { Session, Question, Tip, ArchivedSessionStats, ITip, IQuestion } from '~/lib/models';
+import { Session, Question, Tip, ArchivedSessionStats, User, ITip, IQuestion } from '~/lib/models';
 import mongoose from 'mongoose';
 
 interface Params {
@@ -30,6 +30,9 @@ export async function GET(request: NextRequest, { params }: Params) {
         { status: 404 }
       );
     }
+
+    // Get session creator data
+    const creator = await User.findOne({ fid: session.creatorFid });
     
     // Get questions and tips for this session
     const questions = await Question.find({ sessionId: id })
@@ -41,7 +44,14 @@ export async function GET(request: NextRequest, { params }: Params) {
     const totalTips = tips.reduce((sum: number, tip: ITip) => sum + tip.amount, 0);
     
     return NextResponse.json({
-      session,
+      session: {
+        ...session.toObject(),
+        creator: creator ? {
+          fid: creator.fid,
+          username: creator.username,
+          pfpUrl: creator.pfpUrl
+        } : null
+      },
       questions,
       tips,
       stats: {

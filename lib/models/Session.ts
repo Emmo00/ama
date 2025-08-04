@@ -36,14 +36,14 @@ const SessionSchema: Schema = new Schema({
   },
   endsAt: {
     type: Date,
-    required: true,
+    // required: true,
   },
 });
 
 // Pre-save middleware to set endsAt to createdAt + 1 week
 SessionSchema.pre('save', function(next) {
   if (this.isNew && !this.endsAt) {
-    const oneWeekFromNow = new Date(this.createdAt);
+    const oneWeekFromNow = new Date(this.createdAt as Date);
     oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
     this.endsAt = oneWeekFromNow;
   }

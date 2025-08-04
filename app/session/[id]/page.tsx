@@ -14,7 +14,7 @@ interface Session {
   creatorFid: string;
   title: string;
   description: string;
-  status: 'LIVE' | 'ENDED';
+  status: "LIVE" | "ENDED";
   createdAt: string;
   endsAt: string;
 }
@@ -50,7 +50,9 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [tips, setTips] = useState<Tip[]>([]);
   const [stats, setStats] = useState<SessionStats | null>(null);
-  const [answersInput, setAnswersInput] = useState<{ [key: string]: string }>({});
+  const [answersInput, setAnswersInput] = useState<{ [key: string]: string }>(
+    {}
+  );
   const [newQuestion, setNewQuestion] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTippingModal, setShowTippingModal] = useState(false);
@@ -66,21 +68,21 @@ export default function SessionPage({ params }: { params: { id: string } }) {
         const userFid = context?.user?.fid?.toString();
         const username = context?.user?.username;
         const pfpUrl = context?.user?.pfpUrl;
-        
+
         if (userFid && username) {
           setCurrentUserFid(userFid);
-          
+
           // Create user if not exists
-          await fetch('/api/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          await fetch("/api/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ fid: userFid, username, pfpUrl }),
           }).catch(() => {
             // User might already exist
           });
         }
       } catch (error) {
-        console.error('Error initializing user:', error);
+        console.error("Error initializing user:", error);
       }
     };
 
@@ -93,19 +95,21 @@ export default function SessionPage({ params }: { params: { id: string } }) {
       try {
         setLoading(true);
         const response = await fetch(`/api/sessions/${sessionId}`);
-        
+
         if (!response.ok) {
-          throw new Error('Session not found');
+          throw new Error("Session not found");
         }
-        
+
         const data = await response.json();
         setSession(data.session);
         setQuestions(data.questions);
         setTips(data.tips);
         setStats(data.stats);
       } catch (error) {
-        console.error('Error loading session:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load session');
+        console.error("Error loading session:", error);
+        setError(
+          error instanceof Error ? error.message : "Failed to load session"
+        );
       } finally {
         setLoading(false);
       }
@@ -116,16 +120,16 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     }
   }, [sessionId]);
 
-  const isHost = session?.creatorFid === currentUserFid;
+  const isHost = (session?.creatorFid === currentUserFid);
 
   const handleAskQuestion = async () => {
     if (!newQuestion.trim() || !currentUserFid) return;
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId,
           askerFid: currentUserFid,
@@ -135,15 +139,17 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit question');
+        throw new Error(errorData.error || "Failed to submit question");
       }
 
       const { question } = await response.json();
-      setQuestions(prev => [question, ...prev]);
+      setQuestions((prev) => [question, ...prev]);
       setNewQuestion("");
     } catch (error) {
-      console.error('Error asking question:', error);
-      alert(error instanceof Error ? error.message : 'Failed to submit question');
+      console.error("Error asking question:", error);
+      alert(
+        error instanceof Error ? error.message : "Failed to submit question"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -155,8 +161,8 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
     try {
       const response = await fetch(`/api/questions/${questionId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           answer: answer.trim(),
           creatorFid: currentUserFid,
@@ -165,17 +171,17 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit answer');
+        throw new Error(errorData.error || "Failed to submit answer");
       }
 
       const { question } = await response.json();
-      setQuestions(prev => 
-        prev.map(q => q._id === questionId ? question : q)
+      setQuestions((prev) =>
+        prev.map((q) => (q._id === questionId ? question : q))
       );
-      setAnswersInput(prev => ({ ...prev, [questionId]: "" }));
+      setAnswersInput((prev) => ({ ...prev, [questionId]: "" }));
     } catch (error) {
-      console.error('Error answering question:', error);
-      alert(error instanceof Error ? error.message : 'Failed to submit answer');
+      console.error("Error answering question:", error);
+      alert(error instanceof Error ? error.message : "Failed to submit answer");
     }
   };
 
@@ -184,21 +190,21 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
     try {
       const response = await fetch(`/api/sessions/${sessionId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'ENDED' }),
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ENDED" }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to end session');
+        throw new Error(errorData.error || "Failed to end session");
       }
 
       const { session: updatedSession } = await response.json();
       setSession(updatedSession);
     } catch (error) {
-      console.error('Error ending session:', error);
-      alert(error instanceof Error ? error.message : 'Failed to end session');
+      console.error("Error ending session:", error);
+      alert(error instanceof Error ? error.message : "Failed to end session");
     }
   };
 
@@ -217,7 +223,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Session not found'}</p>
+          <p className="text-red-600 mb-4">{error || "Session not found"}</p>
           <Link href="/">
             <Button>Back to Home</Button>
           </Link>
@@ -238,19 +244,19 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
           </Link>
-          
+
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  session.status === 'LIVE'
+                  session.status === "LIVE"
                     ? "bg-green-100 text-green-800"
                     : "bg-gray-100 text-gray-800"
                 }`}
               >
-                {session.status === 'LIVE' ? "LIVE" : "ENDED"}
+                {session.status === "LIVE" ? "LIVE" : "ENDED"}
               </span>
-              {isHost && session.status === 'LIVE' && (
+              {isHost && session.status === "LIVE" && (
                 <Button
                   onClick={handleEndSession}
                   variant="outline"
@@ -261,17 +267,30 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                 </Button>
               )}
             </div>
-            <Button variant="outline" size="sm">
-              <Share2 className="w-4 h-4 mr-2" />
-              Share
-            </Button>
+            <div className="flex items-center gap-4">
+              {!isHost && (
+                <Button
+                  onClick={() => setShowTippingModal(true)}
+                  size={"sm"}
+                  className="bg-gradient-to-l from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600"
+                >
+                  💰 Send Tip
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="text-black">
+                <Share2 className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+            </div>
           </div>
-          
-          <h1 className="text-3xl font-bold text-black mb-2">{session.title}</h1>
+
+          <h1 className="text-3xl font-bold text-black mb-2">
+            {session.title}
+          </h1>
           {session.description && (
             <p className="text-gray-600">{session.description}</p>
           )}
-          
+
           {stats && (
             <div className="flex items-center space-x-6 mt-4 text-sm text-gray-600">
               <span>{stats.totalQuestions} questions</span>
@@ -285,10 +304,12 @@ export default function SessionPage({ params }: { params: { id: string } }) {
           {/* Questions Column */}
           <div className="lg:col-span-2 space-y-6">
             {/* Ask Question Form */}
-            {session.status === 'LIVE' && currentUserFid && (
+            {session.status === "LIVE" && currentUserFid && (
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="font-semibold text-black mb-4">Ask a Question</h3>
+                  <h3 className="font-semibold text-black mb-4">
+                    Ask a Question
+                  </h3>
                   <div className="space-y-4">
                     <Textarea
                       placeholder="What would you like to know?"
@@ -325,9 +346,12 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                     <CardContent className="p-6">
                       <div className="space-y-4">
                         <div>
-                          <p className="text-black font-medium">{question.content}</p>
+                          <p className="text-black font-medium">
+                            {question.content}
+                          </p>
                           <p className="text-sm text-gray-500 mt-1">
-                            Asked by User {question.askerFid} • {new Date(question.createdAt).toLocaleString()}
+                            Asked by User {question.askerFid} •{" "}
+                            {new Date(question.createdAt).toLocaleString()}
                           </p>
                         </div>
 
@@ -335,15 +359,15 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                             <p className="text-purple-900">{question.answer}</p>
                           </div>
-                        ) : isHost && session.status === 'LIVE' ? (
+                        ) : isHost && session.status === "LIVE" ? (
                           <div className="space-y-3">
                             <Textarea
                               placeholder="Type your answer..."
                               value={answersInput[question._id] || ""}
                               onChange={(e) =>
-                                setAnswersInput(prev => ({
+                                setAnswersInput((prev) => ({
                                   ...prev,
-                                  [question._id]: e.target.value
+                                  [question._id]: e.target.value,
                                 }))
                               }
                               className="resize-none"
@@ -358,7 +382,9 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                             </Button>
                           </div>
                         ) : (
-                          <p className="text-gray-500 italic">Waiting for answer...</p>
+                          <p className="text-gray-500 italic">
+                            Waiting for answer...
+                          </p>
                         )}
                       </div>
                     </CardContent>
@@ -373,7 +399,9 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             {/* Tip Button */}
             <Card>
               <CardContent className="p-6 text-center">
-                <h3 className="font-semibold text-black mb-4">Support the Creator</h3>
+                <h3 className="font-semibold text-black mb-4">
+                  Support the Creator
+                </h3>
                 <Button
                   onClick={() => setShowTippingModal(true)}
                   className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600"
@@ -390,9 +418,16 @@ export default function SessionPage({ params }: { params: { id: string } }) {
                   <h3 className="font-semibold text-black mb-4">Recent Tips</h3>
                   <div className="space-y-3">
                     {tips.slice(0, 5).map((tip) => (
-                      <div key={tip._id} className="flex justify-between items-center text-sm">
-                        <span className="text-gray-600">User {tip.senderFid}</span>
-                        <span className="font-medium text-green-600">${tip.amount}</span>
+                      <div
+                        key={tip._id}
+                        className="flex justify-between items-center text-sm"
+                      >
+                        <span className="text-gray-600">
+                          User {tip.senderFid}
+                        </span>
+                        <span className="font-medium text-green-600">
+                          ${tip.amount}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -409,12 +444,16 @@ export default function SessionPage({ params }: { params: { id: string } }) {
         onClose={() => setShowTippingModal(false)}
         sessionId={sessionId}
         onTipSuccess={(tip) => {
-          setTips(prev => [tip, ...prev]);
+          setTips((prev) => [tip, ...prev]);
           if (stats) {
-            setStats(prev => prev ? {
-              ...prev,
-              totalTips: prev.totalTips + tip.amount
-            } : null);
+            setStats((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    totalTips: prev.totalTips + tip.amount,
+                  }
+                : null
+            );
           }
         }}
       />

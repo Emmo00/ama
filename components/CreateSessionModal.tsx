@@ -70,7 +70,7 @@ export function CreateSessionModal({ onSessionCreated }: CreateSessionModalProps
           Start AMA
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent className="sm:max-w-[525px] text-black">
         <DialogHeader>
           <DialogTitle>Start a New AMA Session</DialogTitle>
           <DialogDescription>

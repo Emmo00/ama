@@ -34,8 +34,27 @@ export function SessionCard({ session, stats, isOwner, onEndSession }: SessionCa
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">FID {session.creatorFid}</span>
+                {session.creator ? (
+                  <>
+                    {session.creator.pfpUrl ? (
+                      <img 
+                        src={session.creator.pfpUrl} 
+                        alt={session.creator.username}
+                        className="w-6 h-6 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                        {session.creator.username.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-sm text-gray-600">@{session.creator.username}</span>
+                  </>
+                ) : (
+                  <>
+                    <User className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">FID {session.creatorFid}</span>
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <div className={`w-2 h-2 rounded-full ${session.status === 'LIVE' ? 'bg-green-500' : 'bg-gray-400'}`} />
@@ -61,10 +80,6 @@ export function SessionCard({ session, stats, isOwner, onEndSession }: SessionCa
                 <div className="flex items-center gap-1">
                   <MessageCircle className="w-4 h-4 text-gray-500" />
                   <span className="text-sm text-gray-600">{stats.totalQuestions}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <User className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">{stats.totalParticipants}</span>
                 </div>
                 {stats.totalTips > 0 && (
                   <div className="flex items-center gap-1">

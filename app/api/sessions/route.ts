@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '~/lib/mongodb';
-import { Session, User } from '~/lib/models';
+import { Session, User, Question, Tip } from '~/lib/models';
 import { withQuickAuth } from '~/lib/quickAuth';
 
 export async function GET(request: NextRequest) {
@@ -24,8 +24,35 @@ export async function GET(request: NextRequest) {
     const sessions = await Session.find(query)
       .sort({ createdAt: -1 })
       .limit(50);
-    
-    return NextResponse.json({ sessions });
+
+    // Populate user data and basic stats for each session
+    const sessionsWithUsers = await Promise.all(
+      sessions.map(async (session) => {
+        const user = await User.findOne({ fid: session.creatorFid });
+        
+        // Get basic stats without detailed questions/tips data
+        const [questionCount, tipCount] = await Promise.all([
+          Question.countDocuments({ sessionId: session._id }),
+          Tip.countDocuments({ sessionId: session._id })
+        ]);
+        
+        return {
+          ...session.toObject(),
+          creator: user ? {
+            fid: user.fid,
+            username: user.username,
+            pfpUrl: user.pfpUrl
+          } : null,
+          stats: {
+            totalQuestions: questionCount,
+            totalTips: tipCount,
+            totalParticipants: 0 // We'll calculate this in the detail view for performance
+          }
+        };
+      })
+    );
+
+    return NextResponse.json({ sessions: sessionsWithUsers });
   } catch (error) {
     console.error('Error fetching sessions:', error);
     return NextResponse.json(

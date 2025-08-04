@@ -10,6 +10,11 @@ export interface Session {
   createdAt: string;
   updatedAt: string;
   stats?: SessionStats;
+  creator?: {
+    fid: string;
+    username: string;
+    pfpUrl?: string;
+  };
 }
 
 export interface SessionStats {
@@ -44,27 +49,9 @@ export function useSessions() {
         throw new Error(data.error || 'Failed to fetch sessions');
       }
       
-      // Fetch stats for each session
-      const sessionsWithStats = await Promise.all(
-        data.sessions.map(async (session: Session) => {
-          try {
-            const statsResponse = await fetch(`/api/sessions/${session._id}`);
-            const statsData = await statsResponse.json();
-            return {
-              ...session,
-              stats: statsData.stats || { totalTips: 0, totalQuestions: 0, totalParticipants: 0 }
-            };
-          } catch {
-            return {
-              ...session,
-              stats: { totalTips: 0, totalQuestions: 0, totalParticipants: 0 }
-            };
-          }
-        })
-      );
-      
-      setSessions(sessionsWithStats);
-      return sessionsWithStats;
+      // The backend now includes creator information and we'll fetch stats separately for the detail view
+      setSessions(data.sessions);
+      return data.sessions;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch sessions';
       setError(errorMessage);

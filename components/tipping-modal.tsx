@@ -100,7 +100,7 @@ export default function TippingModal({ isOpen, onClose, sessionId, onTipSuccess 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md bg-white border-0 shadow-2xl">
+      <DialogContent className="sm:max-w-md bg-white border-0 shadow-2xl text-black">
         <DialogHeader className="relative">
           <DialogTitle className="text-xl font-semibold text-black text-center">Send Tip</DialogTitle>
           <Button
@@ -146,7 +146,7 @@ export default function TippingModal({ isOpen, onClose, sessionId, onTipSuccess 
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="h-12 text-lg pr-16 border-gray-200 focus:border-purple-500"
+                    className="h-12 text-lg text-black pr-16 border-gray-200 focus:border-purple-500"
                     disabled={isLoading}
                     required
                   />
