@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { QuickAuthButton } from "../../components/QuickAuthButton";
-import { useQuickAuth } from "../../hooks/useQuickAuth";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Button } from "~/components/ui/button";
+import { QuickAuthButton } from "~/components/QuickAuthButton";
+import { useQuickAuth } from "~/hooks/useQuickAuth";
 import Link from "next/link";
 import sdk from "@farcaster/miniapp-sdk";
 

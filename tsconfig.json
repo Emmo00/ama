@@ -19,7 +19,12 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "~/components/*": ["./components/*"],
+      "~/lib/*": ["./lib/*"],
+      "~/hooks/*": ["./hooks/*"],
+      "~/ui/*": ["./components/ui/*"],
+      "~/*": ["./*"]
     }
   },
   "ts-node": {

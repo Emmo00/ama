@@ -1,15 +1,15 @@
 "use client";
 
-import { Button } from "../components/ui/button";
+import { Button } from "~/components/ui/button";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { MessageCircle, Plus, User, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import sdk from "@farcaster/miniapp-sdk";
-import { useQuickAuth } from "../hooks/useQuickAuth";
-import { useSessions } from "../hooks/useSessions";
-import { CreateSessionModal } from "../components/CreateSessionModal";
-import { SessionCard } from "../components/SessionCard";
+import { useQuickAuth } from "~/hooks/useQuickAuth";
+import { useSessions } from "~/hooks/useSessions";
+import { CreateSessionModal } from "~/components/CreateSessionModal";
+import { SessionCard } from "~/components/SessionCard";
 
 export default function Home() {
   const {
