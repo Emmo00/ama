@@ -2,89 +2,127 @@
 
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
-import { ArrowLeft, Calendar, MessageCircle, Clock } from "lucide-react"
+import { ArrowLeft, Calendar, MessageCircle, Clock, User, Loader2, RefreshCw, DollarSign } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-
-// Mock user data with current session
-const userData = {
-  username: "vitalik.eth",
-  displayName: "Vitalik Buterin",
-  avatar: "V",
-  bio: "Co-founder of Ethereum. Interested in cryptography, mechanism design, and making the world more open decentralized.",
-  currentSession: {
-    id: "live-1",
-    title: "Building the Future of Web3",
-    startTime: "5 mins ago",
-    questions: 24,
-    isLive: true,
-  },
-  stats: {
-    totalSessions: 12,
-    totalQuestions: 456,
-    totalTips: 1250.5,
-  },
-  pastSessions: [
-    {
-      id: "2",
-      title: "Ethereum Roadmap 2024",
-      date: "Dec 15, 2024",
-      questions: 67,
-    },
-    {
-      id: "3",
-      title: "Scaling Solutions Deep Dive",
-      date: "Dec 10, 2024",
-      questions: 43,
-    },
-    {
-      id: "4",
-      title: "The Philosophy of Decentralization",
-      date: "Dec 5, 2024",
-      questions: 89,
-    },
-    {
-      id: "5",
-      title: "Proof of Stake Explained",
-      date: "Nov 28, 2024",
-      questions: 156,
-    },
-    {
-      id: "6",
-      title: "DeFi Security Best Practices",
-      date: "Nov 20, 2024",
-      questions: 92,
-    },
-  ],
-}
+import { useProfile } from "~/hooks/useProfile"
 
 export default function ProfilePage() {
   const params = useParams()
   const username = params.username as string
+  const { profile, isLoading, error, refreshProfile } = useProfile(username)
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d ago`;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-purple-500 mx-auto mb-4" />
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <User className="w-8 h-8 text-red-500" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Profile Not Found</h3>
+          <p className="text-gray-600 mb-6">{error || 'This user does not exist or has not created any sessions yet.'}</p>
+          <Link href="/">
+            <Button>Back to Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-md mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-6">
-          <Link href="/" className="inline-flex items-center text-gray-600 hover:text-black transition-colors mb-4">
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back
-          </Link>
+          <div className="flex items-center justify-between mb-4">
+            <Link href="/" className="inline-flex items-center text-gray-600 hover:text-black transition-colors">
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back
+            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshProfile}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Top Section - User Info */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg mx-auto mb-4">
-            {userData.avatar}
+          {profile.user.pfpUrl ? (
+            <img 
+              src={profile.user.pfpUrl} 
+              alt={profile.user.username}
+              className="w-20 h-20 rounded-full mx-auto mb-4 shadow-lg"
+            />
+          ) : (
+            <div className="w-20 h-20 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg mx-auto mb-4">
+              {profile.user.username.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <h1 className="text-2xl font-bold text-black mb-1">@{profile.user.username}</h1>
+          <p className="text-gray-600 mb-2">FID {profile.user.fid}</p>
+          <p className="text-gray-500 text-sm">
+            Member since {formatDate(profile.user.createdAt)}
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-black">{profile.stats.totalSessions}</div>
+            <div className="text-xs text-gray-600">Sessions</div>
           </div>
-          <h1 className="text-2xl font-bold text-black mb-1">{userData.displayName}</h1>
-          <p className="text-gray-600 mb-4">@{userData.username}</p>
-          {userData.bio && <p className="text-gray-700 text-sm leading-relaxed px-2">{userData.bio}</p>}
+          <div className="text-center">
+            <div className="text-2xl font-bold text-black">{profile.stats.totalQuestions}</div>
+            <div className="text-xs text-gray-600">Questions</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-black">${profile.stats.totalTips}</div>
+            <div className="text-xs text-gray-600">Tips Received</div>
+          </div>
         </div>
 
         {/* Current Session */}
-        {userData.currentSession && (
+        {profile.currentSession && (
           <div className="mb-8">
             <h2 className="text-lg font-bold text-black mb-4 flex items-center">🎙️ Live Now</h2>
             <Card className="border border-gray-100 shadow-sm">
@@ -94,93 +132,102 @@ export default function ProfilePage() {
                     <div className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></div>
                     LIVE
                   </span>
-                  <h3 className="font-semibold text-black text-lg mb-2">{userData.currentSession.title}</h3>
+                  <h3 className="font-semibold text-black text-lg mb-2">{profile.currentSession.title}</h3>
+                  {profile.currentSession.description && (
+                    <p className="text-gray-600 text-sm mb-3">{profile.currentSession.description}</p>
+                  )}
                   <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
                     <div className="flex items-center">
                       <Clock className="w-4 h-4 mr-1" />
-                      Started {userData.currentSession.startTime}
+                      Started {formatTimeAgo(profile.currentSession.createdAt)}
                     </div>
-                    <div className="flex items-center">
-                      <MessageCircle className="w-4 h-4 mr-1" />
-                      {userData.currentSession.questions} questions
-                    </div>
+                    {profile.currentSession.stats && (
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center">
+                          <MessageCircle className="w-4 h-4 mr-1" />
+                          {profile.currentSession.stats.totalQuestions}
+                        </div>
+                        {profile.currentSession.stats.totalTips > 0 && (
+                          <div className="flex items-center">
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            {profile.currentSession.stats.totalTips}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+                  <Link href={`/session/${profile.currentSession._id}`}>
+                    <Button size="sm" className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
+                      Join Live Session
+                    </Button>
+                  </Link>
                 </div>
-                <Link href={`/session/${userData.currentSession.id}`}>
-                  <Button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200">
-                    View AMA
-                  </Button>
-                </Link>
               </CardContent>
             </Card>
           </div>
         )}
 
-        {/* Statistics Summary */}
-        <div className="mb-8">
-          <h2 className="text-lg font-bold text-black mb-4 flex items-center">📊 Your Stats</h2>
-          <div className="space-y-3">
-            <Card className="border border-gray-100">
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">
-                  {userData.stats.totalSessions}
-                </div>
-                <p className="text-gray-600 text-sm">Total Sessions Hosted</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-gray-100">
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-1">
-                  {userData.stats.totalQuestions}
-                </div>
-                <p className="text-gray-600 text-sm">Total Questions Received</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-gray-100">
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-1">
-                  ${userData.stats.totalTips.toLocaleString()}
-                </div>
-                <p className="text-gray-600 text-sm">Total Tips Earned (USDC)</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
         {/* Past Sessions */}
-        <div className="mb-8">
-          <h2 className="text-lg font-bold text-black mb-4 flex items-center">📚 Past Sessions</h2>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {userData.pastSessions.map((session) => (
-              <Card key={session.id} className="border border-gray-100 shadow-sm">
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-black mb-2 text-sm leading-tight">{session.title}</h3>
-                  <div className="flex items-center justify-between text-xs text-gray-600 mb-3">
-                    <div className="flex items-center">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      {session.date}
+        {profile.pastSessions.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-black mb-4 flex items-center">
+              � Past Sessions ({profile.pastSessions.length})
+            </h2>
+            <div className="space-y-3">
+              {profile.pastSessions.map((session) => (
+                <Card key={session._id} className="border border-gray-100">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold text-black mb-2">{session.title}</h3>
+                    {session.description && (
+                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">{session.description}</p>
+                    )}
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        {formatDate(session.createdAt)}
+                      </div>
+                      {session.stats && (
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center">
+                            <MessageCircle className="w-4 h-4 mr-1" />
+                            {session.stats.totalQuestions}
+                          </div>
+                          {session.stats.totalTips > 0 && (
+                            <div className="flex items-center">
+                              <DollarSign className="w-4 h-4 mr-1" />
+                              {session.stats.totalTips}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center">
-                      <MessageCircle className="w-3 h-3 mr-1" />
-                      {session.questions} questions
-                    </div>
-                  </div>
-                  <Link href={`/session/${session.id}`}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full text-gray-700 border-gray-200 hover:bg-gray-50 py-2 text-sm bg-transparent"
-                    >
-                      View Summary
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
+                    <Link href={`/session/${session._id}`}>
+                      <Button variant="outline" size="sm" className="w-full">
+                        View Session
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Empty State for no sessions */}
+        {profile.stats.totalSessions === 0 && (
+          <div className="text-center py-12">
+            <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Sessions Yet</h3>
+            <p className="text-gray-600 mb-6">
+              @{profile.user.username} hasn't hosted any AMA sessions yet.
+            </p>
+            <Link href="/">
+              <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
+                Discover Live Sessions
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -35,7 +35,10 @@ export function SessionCard({ session, stats, isOwner, onEndSession }: SessionCa
             <div className="flex items-center gap-2 mb-2">
               <div className="flex items-center gap-2">
                 {session.creator ? (
-                  <>
+                  <Link 
+                    href={`/profile/${session.creator.username}`}
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  >
                     {session.creator.pfpUrl ? (
                       <img 
                         src={session.creator.pfpUrl} 
@@ -48,7 +51,7 @@ export function SessionCard({ session, stats, isOwner, onEndSession }: SessionCa
                       </div>
                     )}
                     <span className="text-sm text-gray-600">@{session.creator.username}</span>
-                  </>
+                  </Link>
                 ) : (
                   <>
                     <User className="w-4 h-4 text-gray-500" />
