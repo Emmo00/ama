@@ -77,7 +77,7 @@ export default function ProfilePage() {
               variant="outline"
               size="sm"
               onClick={refreshProfile}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-black"
             >
               <RefreshCw className="w-4 h-4" />
               Refresh
