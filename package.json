@@ -13,8 +13,8 @@
   "types": "./index.d.ts",
   "scripts": {
     "dev": "next dev --turbopack --hostname 0.0.0.0",
-    "build": "next build",
-    "build:raw": "next build",
+    "build": "next build --turbopack",
+    "build:raw": "next build --turbopack",
     "start": "next start",
     "lint": "next lint",
     "deploy:vercel": "node --loader ts-node/esm scripts/deploy.ts",

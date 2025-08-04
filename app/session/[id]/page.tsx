@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent } from "~/components/ui/card";
-import { Textarea } from "~/components/ui/textarea";
-import TippingModal from "~/components/tipping-modal";
+import { Button } from "../../../components/ui/button";
+import { Card, CardContent } from "../../../components/ui/card";
+import { Textarea } from "../../../components/ui/textarea";
+import TippingModal from "../../../components/tipping-modal";
 import { ArrowLeft, MessageCircle, Send, Share2 } from "lucide-react";
 import sdk from "@farcaster/miniapp-sdk";
-import { useUserProfiles } from "~/hooks/useUserProfile";
+import { useUserProfiles } from "../../../hooks/useUserProfile";
 
 interface Session {
   _id: string;

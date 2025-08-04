@@ -4,12 +4,12 @@ import {
   verifyAppKeyWithNeynar,
 } from "@farcaster/miniapp-node";
 import { NextRequest } from "next/server";
-import { APP_NAME } from "~/lib/constants";
+import { APP_NAME } from "../../../lib/constants";
 import {
   deleteUserNotificationDetails,
   setUserNotificationDetails,
-} from "~/lib/kv";
-import { sendMiniAppNotification } from "~/lib/notifs";
+} from "../../../lib/kv";
+import { sendMiniAppNotification } from "../../../lib/notifs";
 
 export async function POST(request: NextRequest) {
   // If Neynar is enabled, we don't need to handle webhooks here
