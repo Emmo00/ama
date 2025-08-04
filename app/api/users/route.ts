@@ -1,91 +1,109 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '~/lib/mongodb';
-import { User } from '~/lib/models';
+import { NextRequest } from 'next/server'
+import connectToDatabase from '../../../lib/mongodb'
+import { User } from '../../../lib/models'
+import { withQuickAuth } from '../../../lib/quickAuth'
 
+interface QuickAuthUser {
+  fid: number
+  username?: string
+  displayName?: string
+  pfpUrl?: string
+}
+
+// GET /api/users - List users with optional filtering
 export async function GET(request: NextRequest) {
   try {
-    await connectToDatabase();
-    
-    const { searchParams } = new URL(request.url);
-    const fid = searchParams.get('fid');
-    const username = searchParams.get('username');
+    await connectToDatabase()
+
+    const { searchParams } = new URL(request.url)
+    const fid = searchParams.get('fid')
+    const username = searchParams.get('username')
+    const limit = parseInt(searchParams.get('limit') || '10')
+
+    let query = {}
     
     if (fid) {
-      const user = await User.findOne({ fid });
-      if (!user) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 }
-        );
-      }
-      return NextResponse.json({ user });
+      query = { fid }
+    } else if (username) {
+      query = { username: { $regex: username, $options: 'i' } }
     }
-    
-    if (username) {
-      const user = await User.findOne({ username });
-      if (!user) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 }
-        );
-      }
-      return NextResponse.json({ user });
-    }
-    
-    // If no specific user requested, return recent users
-    const users = await User.find()
+
+    const users = await User.find(query)
       .sort({ createdAt: -1 })
-      .limit(50);
-    
-    return NextResponse.json({ users });
+      .limit(limit)
+      .select('fid username pfpUrl createdAt')
+
+    return new Response(JSON.stringify(users), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
   } catch (error) {
-    console.error('Error fetching users:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch users' },
-      { status: 500 }
-    );
+    console.error('Error fetching users:', error)
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch users' }),
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
   }
 }
 
-export async function POST(request: NextRequest) {
+// POST /api/users - Create or update user (protected with Quick Auth)
+export const POST = withQuickAuth(async (quickAuthUser: QuickAuthUser, request: NextRequest) => {
   try {
-    await connectToDatabase();
-    
-    const body = await request.json();
-    const { fid, username, pfpUrl } = body;
-    
-    if (!fid || !username) {
-      return NextResponse.json(
-        { error: 'Missing required fields: fid, username' },
-        { status: 400 }
-      );
+    await connectToDatabase()
+
+    // Extract user data from Quick Auth user
+    const userData = {
+      fid: quickAuthUser.fid.toString(),
+      username: quickAuthUser.username || `user-${quickAuthUser.fid}`,
+      pfpUrl: quickAuthUser.pfpUrl,
     }
-    
-    // Check if user already exists
-    const existingUser = await User.findOne({ fid });
-    if (existingUser) {
-      // Update profile picture if provided and different
-      if (pfpUrl && existingUser.pfpUrl !== pfpUrl) {
-        existingUser.pfpUrl = pfpUrl;
-        await existingUser.save();
+
+    // Find existing user or create new one
+    let user = await User.findOne({ fid: userData.fid })
+
+    if (user) {
+      // Update existing user with latest info
+      let updated = false
+      if (userData.username && user.username !== userData.username) {
+        user.username = userData.username
+        updated = true
       }
-      return NextResponse.json({ user: existingUser });
+      if (userData.pfpUrl && user.pfpUrl !== userData.pfpUrl) {
+        user.pfpUrl = userData.pfpUrl
+        updated = true
+      }
+      if (updated) {
+        await user.save()
+      }
+    } else {
+      // Create new user
+      user = new User(userData)
+      await user.save()
     }
-    
-    const user = new User({
-      fid,
-      username,
-      pfpUrl,
-    });
-    
-    await user.save();
-    
-    return NextResponse.json({ user }, { status: 201 });
+
+    return new Response(
+      JSON.stringify({
+        fid: user.fid,
+        username: user.username,
+        pfpUrl: user.pfpUrl,
+        createdAt: user.createdAt,
+      }),
+      { 
+        status: 201,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
   } catch (error) {
-    console.error('Error creating user:', error);
-    return NextResponse.json(
-      { error: 'Failed to create user' },
-      { status: 500 }
-    );
+    console.error('Error creating/updating user:', error)
+    return new Response(
+      JSON.stringify({ error: 'Failed to create/update user' }),
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
   }
-}
+})

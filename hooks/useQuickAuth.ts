@@ -1,207 +1,70 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { sdk } from '@farcaster/miniapp-sdk';
+import { useState, useEffect } from "react";
+import sdk from "@farcaster/miniapp-sdk";
 
-/**
- * Represents the current authenticated user state
- */
-interface AuthenticatedUser {
-  /** The user's Farcaster ID (FID) */
-  fid: number;
+interface QuickAuthUser {
+  fid: string;
+  username: string;
+  pfpUrl?: string;
+  createdAt: string;
 }
 
-/**
- * Possible authentication states for QuickAuth
- */
-type QuickAuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
-
-/**
- * Return type for the useQuickAuth hook
- */
-interface UseQuickAuthReturn {
-  /** Current authenticated user data, or null if not authenticated */
-  authenticatedUser: AuthenticatedUser | null;
-  /** Current authentication status */
-  status: QuickAuthStatus;
-  /** Function to initiate the sign-in process using QuickAuth */
-  signIn: () => Promise<boolean>;
-  /** Function to sign out and clear the current authentication state */
-  signOut: () => Promise<void>;
-  /** Function to retrieve the current authentication token */
-  getToken: () => Promise<string | null>;
+interface QuickAuthState {
+  user: QuickAuthUser | null;
+  isLoading: boolean;
+  error: string | null;
+  isAuthenticated: boolean;
 }
 
-/**
- * Custom hook for managing QuickAuth authentication state
- *
- * This hook provides a complete authentication flow using Farcaster's QuickAuth:
- * - Automatically checks for existing authentication on mount
- * - Validates tokens with the server-side API
- * - Manages authentication state in memory (no persistence)
- * - Provides sign-in/sign-out functionality
- *
- * QuickAuth tokens are managed in memory only, so signing out of the Farcaster
- * client will automatically sign the user out of this mini app as well.
- *
- * @returns {UseQuickAuthReturn} Object containing user state and authentication methods
- *
- * @example
- * ```tsx
- * const { authenticatedUser, status, signIn, signOut } = useQuickAuth();
- *
- * if (status === 'loading') return <div>Loading...</div>;
- * if (status === 'unauthenticated') return <button onClick={signIn}>Sign In</button>;
- *
- * return (
- *   <div>
- *     <p>Welcome, FID: {authenticatedUser?.fid}</p>
- *     <button onClick={signOut}>Sign Out</button>
- *   </div>
- * );
- * ```
- */
-export function useQuickAuth(): UseQuickAuthReturn {
-  // Current authenticated user data
-  const [authenticatedUser, setAuthenticatedUser] =
-    useState<AuthenticatedUser | null>(null);
-  // Current authentication status
-  const [status, setStatus] = useState<QuickAuthStatus>('loading');
+export function useQuickAuth(): QuickAuthState {
+  const [state, setState] = useState<QuickAuthState>({
+    user: null,
+    isLoading: true,
+    error: null,
+    isAuthenticated: false,
+  });
 
-  /**
-   * Validates a QuickAuth token with the server-side API
-   *
-   * @param {string} authToken - The JWT token to validate
-   * @returns {Promise<AuthenticatedUser | null>} User data if valid, null otherwise
-   */
-  const validateTokenWithServer = async (
-    authToken: string,
-  ): Promise<AuthenticatedUser | null> => {
-    try {
-      const validationResponse = await fetch('/api/auth/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: authToken }),
-      });
-
-      if (validationResponse.ok) {
-        const responseData = await validationResponse.json();
-        return responseData.user;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Token validation failed:', error);
-      return null;
-    }
-  };
-
-  /**
-   * Checks for existing authentication token and validates it on component mount
-   * This runs automatically when the hook is first used
-   */
   useEffect(() => {
-    const checkExistingAuthentication = async () => {
+    const authenticateUser = async () => {
       try {
-        // Attempt to retrieve existing token from QuickAuth SDK
-        const { token } = await sdk.quickAuth.getToken();
+        setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-        if (token) {
-          // Validate the token with our server-side API
-          const validatedUserSession = await validateTokenWithServer(token);
+        // Use the Farcaster SDK's Quick Auth to make authenticated requests
+        const response = await sdk.quickAuth.fetch('/api/auth/me', {
+          method: 'GET',
+        });
 
-          if (validatedUserSession) {
-            // Token is valid, set authenticated state
-            setAuthenticatedUser(validatedUserSession);
-            setStatus('authenticated');
-          } else {
-            // Token is invalid or expired, clear authentication state
-            setStatus('unauthenticated');
-          }
+        if (response.ok) {
+          const userData = await response.json();
+          setState({
+            user: userData,
+            isLoading: false,
+            error: null,
+            isAuthenticated: true,
+          });
         } else {
-          // No existing token found, user is not authenticated
-          setStatus('unauthenticated');
+          const errorData = await response.json().catch(() => ({}));
+          setState({
+            user: null,
+            isLoading: false,
+            error: errorData.message || 'Authentication failed',
+            isAuthenticated: false,
+          });
         }
       } catch (error) {
-        console.error('Error checking existing authentication:', error);
-        setStatus('unauthenticated');
+        console.error('Quick Auth error:', error);
+        setState({
+          user: null,
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Authentication failed',
+          isAuthenticated: false,
+        });
       }
     };
 
-    checkExistingAuthentication();
+    authenticateUser();
   }, []);
 
-  /**
-   * Initiates the QuickAuth sign-in process
-   *
-   * Uses sdk.quickAuth.getToken() to get a QuickAuth session token.
-   * If there is already a session token in memory that hasn't expired,
-   * it will be immediately returned, otherwise a fresh one will be acquired.
-   *
-   * @returns {Promise<boolean>} True if sign-in was successful, false otherwise
-   */
-  const signIn = useCallback(async (): Promise<boolean> => {
-    try {
-      setStatus('loading');
-
-      // Get QuickAuth session token
-      const { token } = await sdk.quickAuth.getToken();
-
-      if (token) {
-        // Validate the token with our server-side API
-        const validatedUserSession = await validateTokenWithServer(token);
-
-        if (validatedUserSession) {
-          // Authentication successful, update user state
-          setAuthenticatedUser(validatedUserSession);
-          setStatus('authenticated');
-          return true;
-        }
-      }
-
-      // Authentication failed, clear user state
-      setStatus('unauthenticated');
-      return false;
-    } catch (error) {
-      console.error('Sign-in process failed:', error);
-      setStatus('unauthenticated');
-      return false;
-    }
-  }, []);
-
-  /**
-   * Signs out the current user and clears the authentication state
-   *
-   * Since QuickAuth tokens are managed in memory only, this simply clears
-   * the local user state. The actual token will be cleared when the
-   * user signs out of their Farcaster client.
-   */
-  const signOut = useCallback(async (): Promise<void> => {
-    // Clear local user state
-    setAuthenticatedUser(null);
-    setStatus('unauthenticated');
-  }, []);
-
-  /**
-   * Retrieves the current authentication token from QuickAuth
-   *
-   * @returns {Promise<string | null>} The current auth token, or null if not authenticated
-   */
-  const getToken = useCallback(async (): Promise<string | null> => {
-    try {
-      const { token } = await sdk.quickAuth.getToken();
-      return token;
-    } catch (error) {
-      console.error('Failed to retrieve authentication token:', error);
-      return null;
-    }
-  }, []);
-
-  return {
-    authenticatedUser,
-    status,
-    signIn,
-    signOut,
-    getToken,
-  };
+  return state;
 }

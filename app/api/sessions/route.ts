@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '~/lib/mongodb';
 import { Session, User } from '~/lib/models';
+import { withQuickAuth } from '~/lib/quickAuth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,31 +35,35 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withQuickAuth(async (user: any, request: NextRequest) => {
   try {
     await connectToDatabase();
     
     const body = await request.json();
-    const { creatorFid, title, description } = body;
+    const { title, description } = body;
     
-    if (!creatorFid || !title || !description) {
+    if (!title || !description) {
       return NextResponse.json(
-        { error: 'Missing required fields: creatorFid, title, description' },
+        { error: 'Missing required fields: title, description' },
         { status: 400 }
       );
     }
     
-    // Ensure user exists
-    let user = await User.findOne({ fid: creatorFid });
-    if (!user) {
+    // Check if user already has a live session
+    const existingLiveSession = await Session.findOne({ 
+      creatorFid: user.fid, 
+      status: 'LIVE' 
+    });
+    
+    if (existingLiveSession) {
       return NextResponse.json(
-        { error: 'User not found. Please create user first.' },
-        { status: 404 }
+        { error: 'You already have a live session. End your current session before creating a new one.' },
+        { status: 409 }
       );
     }
     
     const session = new Session({
-      creatorFid,
+      creatorFid: user.fid,
       title,
       description,
       status: 'LIVE',
@@ -74,4 +79,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
