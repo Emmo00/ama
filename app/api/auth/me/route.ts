@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
-import connectToDatabase from '../../../../lib/mongodb'
-import { User } from '../../../../lib/models'
-import { withQuickAuth } from '../../../../lib/quickAuth'
+import connectToDatabase from '@/lib/mongodb'
+import { User } from '@/lib/models'
+import { withQuickAuth } from '@/lib/quickAuth'
 
 interface QuickAuthUser {
   fid: number

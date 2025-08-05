@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { MessageCircle, User, Clock, DollarSign } from "lucide-react";
-import { Session, SessionStats } from "../hooks/useSessions";
+import { Session, SessionStats } from "@/hooks/useSessions";
 import Link from "next/link";
 
 interface SessionCardProps {

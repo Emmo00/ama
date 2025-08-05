@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import connectToDatabase from "../../../lib/mongodb";
-import { Session, User, Question, Tip } from "../../../lib/models";
-import { withQuickAuth } from "../../../lib/quickAuth";
+import connectToDatabase from "@/lib/mongodb";
+import { Session, User, Question, Tip } from "@/lib/models";
+import { withQuickAuth } from "@/lib/quickAuth";
 
 export async function GET(request: NextRequest) {
   try {

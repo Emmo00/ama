@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectToDatabase from '../../../../lib/mongodb';
-import { Session, Question, Tip, ArchivedSessionStats, User, ITip, IQuestion } from '../../../../lib/models';
+import connectToDatabase from '@/lib/mongodb';
+import { Session, Question, Tip, ArchivedSessionStats, User, ITip, IQuestion } from '@/lib/models';
 import mongoose from 'mongoose';
 
 interface Params {

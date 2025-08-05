@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getFarcasterDomainManifest } from '../../../lib/utils';
+import { getFarcasterDomainManifest } from '@/lib/utils';
 
 export async function GET() {
   try {
