@@ -14,9 +14,17 @@ import { Label } from "@/components/ui/label";
 import { Check, X, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import sdk from "@farcaster/miniapp-sdk";
-import { useWriteContract, useAccount, useChainId, useWaitForTransactionReceipt, useConnect, useSwitchChain, useBalance } from "wagmi";
+import {
+  useWriteContract,
+  useAccount,
+  useChainId,
+  useWaitForTransactionReceipt,
+  useConnect,
+  useSwitchChain,
+  useBalance,
+} from "wagmi";
 import { parseUnits, formatUnits, type Address } from "viem";
-import { TIPPING_CONTRACT_ADDRESSES } from "@/lib/constants";
+import { APP_URL, TIPPING_CONTRACT_ADDRESSES } from "@/lib/constants";
 import AMATippingABI from "@/abis/AMATipping.json";
 import ERC20ABI from "@/abis/ERC20.json";
 import { config } from "@/components/providers/WagmiProvider";
@@ -26,53 +34,67 @@ interface TippingModalProps {
   onClose: () => void;
   sessionId: string;
   creatorFid?: string; // The creator's Farcaster ID to fetch wallet address
+  creatorUsername?: string; // The creator's Farcaster username for display
   onTipSuccess?: (tip: any) => void;
 }
 
-type TippingStep = 'chain-selection' | 'token-selection' | 'amount-input' | 'approve' | 'tip' | 'success';
+type TippingStep =
+  | "chain-selection"
+  | "token-selection"
+  | "amount-input"
+  | "approve"
+  | "tip"
+  | "success";
 
 export default function TippingModal({
   isOpen,
   onClose,
   sessionId,
   creatorFid,
+  creatorUsername,
   onTipSuccess,
 }: TippingModalProps) {
   const [amount, setAmount] = useState("");
-  const [currentStep, setCurrentStep] = useState<TippingStep>('chain-selection');
+  const [currentStep, setCurrentStep] =
+    useState<TippingStep>("chain-selection");
   const [error, setError] = useState<string | null>(null);
   const [creatorAddress, setCreatorAddress] = useState<string | null>(null);
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
   const [selectedChainId, setSelectedChainId] = useState<number | null>(null);
   const [selectedTokenIndex, setSelectedTokenIndex] = useState<number>(0);
-  
+
   const { address } = useAccount();
   const chainId = useChainId();
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { connect, connectors } = useConnect();
   const { switchChain } = useSwitchChain();
-  
+
   // Separate transaction hashes for approve and tip
   const [approveHash, setApproveHash] = useState<string | null>(null);
   const [tipHash, setTipHash] = useState<string | null>(null);
-  
+
   // Get available chains from config
   const availableChains = config.chains;
-  
+
   // Get contract config for selected chain
-  const contractConfig = selectedChainId ? TIPPING_CONTRACT_ADDRESSES[selectedChainId as keyof typeof TIPPING_CONTRACT_ADDRESSES] : null;
+  const contractConfig = selectedChainId
+    ? TIPPING_CONTRACT_ADDRESSES[
+        selectedChainId as keyof typeof TIPPING_CONTRACT_ADDRESSES
+      ]
+    : null;
   const tokenConfig = contractConfig?.tokens[selectedTokenIndex];
-  
+
   // Get token balance
   const { data: tokenBalance } = useBalance({
     address: address,
     token: tokenConfig?.address as Address,
     chainId: selectedChainId || undefined,
   });
-  
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash,
-  });
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({
+      hash,
+    });
 
   // Save wallet address when connected
   useEffect(() => {
@@ -89,7 +111,7 @@ export default function TippingModal({
         }
       }
     };
-    
+
     saveWalletAddress();
   }, [address]);
 
@@ -97,28 +119,30 @@ export default function TippingModal({
   useEffect(() => {
     const fetchCreatorAddress = async () => {
       if (!creatorFid || !isOpen) return;
-      
+
       setIsFetchingAddress(true);
       try {
         const response = await fetch(
           `https://api.farcaster.xyz/fc/primary-address?fid=${creatorFid}&protocol=ethereum`
         );
-        
+
         if (!response.ok) {
-          throw new Error('Failed to fetch creator address');
+          throw new Error("Failed to fetch creator address");
         }
-        
+
         const data = await response.json();
         const address = data?.result?.address?.address;
-        
+
         if (address) {
           setCreatorAddress(address);
         } else {
-          throw new Error('Creator has no verified Ethereum address');
+          throw new Error("Creator has no verified Ethereum address");
         }
       } catch (err) {
-        console.error('Error fetching creator address:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch creator address');
+        console.error("Error fetching creator address:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch creator address"
+        );
       } finally {
         setIsFetchingAddress(false);
       }
@@ -132,41 +156,41 @@ export default function TippingModal({
     try {
       setError(null);
       setSelectedChainId(targetChainId);
-      
+
       if (chainId !== targetChainId) {
         await switchChain({ chainId: targetChainId });
       }
-      
-      setCurrentStep('token-selection');
+
+      setCurrentStep("token-selection");
     } catch (err) {
-      console.error('Error switching chain:', err);
-      setError(err instanceof Error ? err.message : 'Failed to switch chain');
+      console.error("Error switching chain:", err);
+      setError(err instanceof Error ? err.message : "Failed to switch chain");
     }
   };
 
   // Handle token selection
   const handleTokenSelect = (tokenIndex: number) => {
     setSelectedTokenIndex(tokenIndex);
-    setCurrentStep('amount-input');
+    setCurrentStep("amount-input");
   };
 
   // Handle back navigation
   const handleBack = () => {
-    if (currentStep === 'token-selection') {
-      setCurrentStep('chain-selection');
+    if (currentStep === "token-selection") {
+      setCurrentStep("chain-selection");
       setSelectedChainId(null);
-    } else if (currentStep === 'amount-input') {
-      setCurrentStep('token-selection');
+    } else if (currentStep === "amount-input") {
+      setCurrentStep("token-selection");
       setSelectedTokenIndex(0);
     }
   };
 
   useEffect(() => {
     if (isConfirmed && hash) {
-      if (currentStep === 'approve') {
+      if (currentStep === "approve") {
         setApproveHash(hash);
         handleTip();
-      } else if (currentStep === 'tip') {
+      } else if (currentStep === "tip") {
         setTipHash(hash);
         handleTransactionSuccess(hash);
       }
@@ -175,35 +199,35 @@ export default function TippingModal({
 
   const handleApprove = async () => {
     if (!tokenConfig || !contractConfig || !address) return;
-    
+
     try {
       setError(null);
-      setCurrentStep('approve');
-      
+      setCurrentStep("approve");
+
       const amountInWei = parseUnits(amount, tokenConfig.decimals);
-      
+
       writeContract({
         address: tokenConfig.address as Address,
         abi: ERC20ABI,
-        functionName: 'approve',
+        functionName: "approve",
         args: [contractConfig.address, amountInWei],
       });
     } catch (err) {
       console.error("Error approving token:", err);
       setError(err instanceof Error ? err.message : "Failed to approve token");
-      setCurrentStep('amount-input');
+      setCurrentStep("amount-input");
     }
   };
 
   const handleTip = async () => {
     if (!tokenConfig || !contractConfig || !address || !creatorAddress) return;
-    
+
     try {
       setError(null);
-      setCurrentStep('tip');
-      
+      setCurrentStep("tip");
+
       const amountInWei = parseUnits(amount, tokenConfig.decimals);
-      
+
       // Convert sessionId (hex string) to a number (BigInt)
       const sessionIdNum = sessionId.startsWith("0x")
         ? BigInt(sessionId)
@@ -212,18 +236,18 @@ export default function TippingModal({
       writeContract({
         address: contractConfig.address as Address,
         abi: AMATippingABI,
-        functionName: 'tip',
+        functionName: "tip",
         args: [
           sessionIdNum,
           creatorAddress as Address,
           tokenConfig.address as Address,
-          amountInWei
+          amountInWei,
         ],
       });
     } catch (err) {
       console.error("Error sending tip:", err);
       setError(err instanceof Error ? err.message : "Failed to send tip");
-      setCurrentStep('amount-input');
+      setCurrentStep("amount-input");
     }
   };
 
@@ -269,8 +293,8 @@ export default function TippingModal({
       }
 
       const { tip } = await response.json();
-      
-      setCurrentStep('success');
+
+      setCurrentStep("success");
       onTipSuccess?.(tip);
 
       // Don't auto-close, let user interact with success actions
@@ -295,7 +319,7 @@ export default function TippingModal({
       setError("No chain selected");
       return;
     }
-    
+
     // Check if we're on the correct chain
     if (chainId !== selectedChainId) {
       try {
@@ -305,9 +329,9 @@ export default function TippingModal({
         return;
       }
     }
-    
+
     // Start with token approval
-    console.log("approving token send")
+    console.log("approving token send");
     handleApprove();
   };
 
@@ -317,7 +341,7 @@ export default function TippingModal({
   const handleClose = () => {
     if (!isPending && !isConfirming && !isFetchingAddress) {
       setAmount("");
-      setCurrentStep('chain-selection');
+      setCurrentStep("chain-selection");
       setError(null);
       setCreatorAddress(null);
       setSelectedChainId(null);
@@ -329,45 +353,50 @@ export default function TippingModal({
   };
 
   const isLoading = isPending || isConfirming || isFetchingAddress;
-  const isSuccess = currentStep === 'success';
+  const isSuccess = currentStep === "success";
 
   // Get chain name helper
   const getChainName = (chainId: number) => {
-    const chain = availableChains.find(c => c.id === chainId);
+    const chain = availableChains.find((c) => c.id === chainId);
     return chain?.name || `Chain ${chainId}`;
   };
 
   // Get block explorer URL
   const getBlockExplorerUrl = (txHash: string, chainId: number) => {
     const baseUrls: { [key: number]: string } = {
-      8453: 'https://basescan.org', // Base Mainnet
-      84532: 'https://sepolia.basescan.org', // Base Sepolia
-      42220: 'https://celoscan.io', // Celo Mainnet
-      44787: 'https://alfajores.celoscan.io', // Celo Alfajores
+      8453: "https://basescan.org", // Base Mainnet
+      84532: "https://sepolia.basescan.org", // Base Sepolia
+      42220: "https://celoscan.io", // Celo Mainnet
+      44787: "https://alfajores.celoscan.io", // Celo Alfajores
     };
-    
+
     const baseUrl = baseUrls[chainId];
-    return baseUrl ? `${baseUrl}/tx/${txHash}` : `https://etherscan.io/tx/${txHash}`;
+    return baseUrl
+      ? `${baseUrl}/tx/${txHash}`
+      : `https://etherscan.io/tx/${txHash}`;
   };
 
   // Handle share to Farcaster
   const handleShareToFarcaster = () => {
     if (!tipHash || !selectedChainId || !tokenConfig) return;
-    
+
     const blockExplorerUrl = getBlockExplorerUrl(tipHash, selectedChainId);
-    const shareText = `Just tipped ${amount} ${tokenConfig.symbol} on ${getChainName(selectedChainId)}! 💰\n\nTransaction: ${blockExplorerUrl}`;
-    
-    // Open Farcaster share URL
-    const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`;
-    window.open(farcasterUrl, '_blank');
+    const displayName = creatorUsername ? `@${creatorUsername}` : `user ${creatorFid}`;
+    const shareText = `Just tipped ${amount} ${tokenConfig.symbol} to ${displayName} on AMA!`;
+
+    // Open Farcaster share
+    sdk.actions.composeCast({
+      text: shareText,
+      embeds: [`${APP_URL}/share/${sessionId}`], // Use current page URL as embed
+    });
   };
 
   // Handle view on explorer
   const handleViewOnExplorer = () => {
     if (!tipHash || !selectedChainId) return;
-    
+
     const blockExplorerUrl = getBlockExplorerUrl(tipHash, selectedChainId);
-    window.open(blockExplorerUrl, '_blank');
+    window.open(blockExplorerUrl, "_blank");
   };
 
   return (
@@ -377,7 +406,7 @@ export default function TippingModal({
           <DialogTitle className="text-xl font-semibold text-black text-center">
             Send Tip
           </DialogTitle>
-          <Button
+          {/* <Button
             variant="ghost"
             size="icon"
             className="absolute right-0 top-0 h-6 w-6 rounded-full hover:bg-gray-100"
@@ -385,7 +414,7 @@ export default function TippingModal({
             disabled={isLoading}
           >
             <X className="h-4 w-4" />
-          </Button>
+          </Button> */}
         </DialogHeader>
 
         <div className="py-6">
@@ -399,18 +428,62 @@ export default function TippingModal({
                   Tip Sent Successfully! 🎉
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Your tip of {amount} {tokenConfig?.symbol || 'USDC'} has been sent to the creator on {selectedChainId ? getChainName(selectedChainId) : 'the blockchain'}!
+                  Your tip has been sent to the creator!
                 </p>
+
+                {/* Tip Details with Images */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                      <img
+                        src={tokenConfig?.image}
+                        alt={tokenConfig?.symbol}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </div>
+                    <span className="text-lg font-semibold text-gray-900">
+                      {amount} {tokenConfig?.symbol || "USDC"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                    <span>on</span>
+                    <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                      <img
+                        src={contractConfig?.image}
+                        alt={
+                          selectedChainId
+                            ? getChainName(selectedChainId)
+                            : "blockchain"
+                        }
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </div>
+                    <span>
+                      {selectedChainId
+                        ? getChainName(selectedChainId)
+                        : "the blockchain"}
+                    </span>
+                  </div>
+                </div>
+
                 {tipHash && (
                   <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg mb-4">
-                    <p className="text-xs text-gray-500 mb-1">Transaction Hash:</p>
+                    <p className="text-xs text-gray-500 mb-1">
+                      Transaction Hash:
+                    </p>
                     <p className="text-xs text-gray-800 break-all font-mono">
                       {tipHash}
                     </p>
                   </div>
                 )}
               </div>
-              
+
               {/* Action Buttons */}
               <div className="space-y-3">
                 {tipHash && selectedChainId && (
@@ -422,7 +495,7 @@ export default function TippingModal({
                     🔍 View on Block Explorer
                   </Button>
                 )}
-                
+
                 <Button
                   onClick={handleShareToFarcaster}
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white"
@@ -430,7 +503,7 @@ export default function TippingModal({
                 >
                   📢 Share on Farcaster
                 </Button>
-                
+
                 <Button
                   onClick={handleClose}
                   variant="outline"
@@ -440,12 +513,12 @@ export default function TippingModal({
                 </Button>
               </div>
             </div>
-          ) : currentStep === 'chain-selection' ? (
+          ) : currentStep === "chain-selection" ? (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-black mb-4">
                 Choose Network
               </h3>
-              
+
               {!address && (
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
                   <p className="text-sm text-blue-700 mb-3">
@@ -469,9 +542,12 @@ export default function TippingModal({
               {address && (
                 <div className="space-y-3">
                   {availableChains.map((chain) => {
-                    const hasConfig = TIPPING_CONTRACT_ADDRESSES[chain.id as keyof typeof TIPPING_CONTRACT_ADDRESSES];
+                    const hasConfig =
+                      TIPPING_CONTRACT_ADDRESSES[
+                        chain.id as keyof typeof TIPPING_CONTRACT_ADDRESSES
+                      ];
                     if (!hasConfig) return null;
-                    
+
                     return (
                       <Button
                         key={chain.id}
@@ -481,8 +557,19 @@ export default function TippingModal({
                         disabled={isLoading}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold">
-                            {chain.name.charAt(0)}
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                            <img
+                              src={hasConfig.image}
+                              alt={chain.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Fallback to text if image fails to load
+                                e.currentTarget.style.display = "none";
+                                e.currentTarget.parentElement!.innerHTML = `<div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold">${chain.name.charAt(
+                                  0
+                                )}</div>`;
+                              }}
+                            />
                           </div>
                           <span className="font-medium">{chain.name}</span>
                         </div>
@@ -493,7 +580,7 @@ export default function TippingModal({
                 </div>
               )}
             </div>
-          ) : currentStep === 'token-selection' ? (
+          ) : currentStep === "token-selection" ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Button
@@ -520,8 +607,19 @@ export default function TippingModal({
                       disabled={isLoading}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold">
-                          {token.symbol.charAt(0)}
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                          <img
+                            src={token.image}
+                            alt={token.symbol}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to text if image fails to load
+                              e.currentTarget.style.display = "none";
+                              e.currentTarget.parentElement!.innerHTML = `<div class="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold">${token.symbol.charAt(
+                                0
+                              )}</div>`;
+                            }}
+                          />
                         </div>
                         <div className="text-left">
                           <div className="font-medium">{token.symbol}</div>
@@ -533,7 +631,7 @@ export default function TippingModal({
                 </div>
               )}
             </div>
-          ) : currentStep === 'amount-input' ? (
+          ) : currentStep === "amount-input" ? (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex items-center gap-2">
                 <Button
@@ -558,7 +656,8 @@ export default function TippingModal({
               {!creatorAddress && !isFetchingAddress && (
                 <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                   <p className="text-sm text-orange-700">
-                    Creator has no verified Ethereum address on Farcaster. Cannot send tip.
+                    Creator has no verified Ethereum address on Farcaster.
+                    Cannot send tip.
                   </p>
                 </div>
               )}
@@ -578,18 +677,55 @@ export default function TippingModal({
               {tokenConfig && selectedChainId && (
                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Network:</span>
-                    <span className="text-sm text-gray-900">{getChainName(selectedChainId)}</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      Network:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                        <img
+                          src={contractConfig?.image}
+                          alt={getChainName(selectedChainId)}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm text-gray-900">
+                        {getChainName(selectedChainId)}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Token:</span>
-                    <span className="text-sm text-gray-900">{tokenConfig.symbol}</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      Token:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                        <img
+                          src={tokenConfig.image}
+                          alt={tokenConfig.symbol}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm text-gray-900">
+                        {tokenConfig.symbol}
+                      </span>
+                    </div>
                   </div>
                   {tokenBalance && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">Balance:</span>
+                      <span className="text-sm font-medium text-gray-700">
+                        Balance:
+                      </span>
                       <span className="text-sm text-gray-900">
-                        {Number(formatUnits(tokenBalance.value, tokenBalance.decimals)).toFixed(6)} {tokenConfig.symbol}
+                        {Number(
+                          formatUnits(tokenBalance.value, tokenBalance.decimals)
+                        ).toFixed(6)}{" "}
+                        {tokenConfig.symbol}
                       </span>
                     </div>
                   )}
@@ -601,7 +737,7 @@ export default function TippingModal({
                   htmlFor="amount"
                   className="text-sm font-medium text-black"
                 >
-                  Enter amount in {tokenConfig?.symbol || 'USDC'}
+                  Enter amount in {tokenConfig?.symbol || "USDC"}
                 </Label>
                 <div className="relative">
                   <Input
@@ -617,15 +753,20 @@ export default function TippingModal({
                     required
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                    {tokenConfig?.symbol || 'USDC'}
+                    {tokenConfig?.symbol || "USDC"}
                   </div>
                 </div>
                 {tokenBalance && amount && (
                   <div className="text-xs text-gray-500">
-                    {Number(amount) > Number(formatUnits(tokenBalance.value, tokenBalance.decimals)) ? (
+                    {Number(amount) >
+                    Number(
+                      formatUnits(tokenBalance.value, tokenBalance.decimals)
+                    ) ? (
                       <span className="text-red-500">Insufficient balance</span>
                     ) : (
-                      <span className="text-green-500">✓ Sufficient balance</span>
+                      <span className="text-green-500">
+                        ✓ Sufficient balance
+                      </span>
                     )}
                   </div>
                 )}
@@ -637,21 +778,26 @@ export default function TippingModal({
                   valuable insights and time spent answering questions.
                 </p>
                 <p className="text-xs text-gray-500 mt-2">
-                  Platform fee: 10% • Network: {getChainName(selectedChainId!)} • Token: {tokenConfig?.symbol}
+                  Platform fee: 10% • Network: {getChainName(selectedChainId!)}{" "}
+                  • Token: {tokenConfig?.symbol}
                 </p>
               </div>
 
               <Button
                 type="submit"
                 disabled={
-                  !amount || 
-                  Number.parseFloat(amount) <= 0 || 
-                  isLoading || 
+                  !amount ||
+                  Number.parseFloat(amount) <= 0 ||
+                  isLoading ||
                   isFetchingAddress ||
                   !contractConfig ||
                   !address ||
                   !creatorAddress ||
-                  (tokenBalance && Number(amount) > Number(formatUnits(tokenBalance.value, tokenBalance.decimals)))
+                  (tokenBalance &&
+                    Number(amount) >
+                      Number(
+                        formatUnits(tokenBalance.value, tokenBalance.decimals)
+                      ))
                 }
                 className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -660,24 +806,27 @@ export default function TippingModal({
             </form>
           ) : (
             <div className="space-y-4">
-              {(currentStep === 'approve' || currentStep === 'tip') && (
+              {(currentStep === "approve" || currentStep === "tip") && (
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-blue-900">
-                        {currentStep === 'approve' && 'Step 1: Approving token...'}
-                        {currentStep === 'tip' && 'Step 2: Sending tip...'}
+                        {currentStep === "approve" &&
+                          "Step 1: Approving token..."}
+                        {currentStep === "tip" && "Step 2: Sending tip..."}
                       </span>
                       <span className="text-xs text-blue-700">
-                        {currentStep === 'approve' && 'Please confirm the token approval in your wallet'}
-                        {currentStep === 'tip' && 'Please confirm the tip transaction in your wallet'}
+                        {currentStep === "approve" &&
+                          "Please confirm the token approval in your wallet"}
+                        {currentStep === "tip" &&
+                          "Please confirm the tip transaction in your wallet"}
                       </span>
                     </div>
                     <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                   </div>
-                  
+
                   {/* Transaction hashes */}
-                  {approveHash && currentStep === 'tip' && (
+                  {approveHash && currentStep === "tip" && (
                     <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-xs">
                       <span className="text-green-700">✓ Token approved</span>
                     </div>

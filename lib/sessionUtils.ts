@@ -17,7 +17,7 @@ export async function archiveSession(sessionId: string): Promise<void> {
   const questions = await Question.find({ sessionId });
   const tips = await Tip.find({ sessionId });
   
-  const totalTips = tips.reduce((sum: number, tip: ITip) => sum + tip.amount, 0);
+  const totalTips = tips.reduce((sum: number, tip: ITip) => sum + Number(tip.amount), 0);
   const uniqueParticipants = new Set([
     ...questions.map((q: IQuestion) => q.askerFid),
     ...tips.map((t: ITip) => t.senderFid)
@@ -53,7 +53,7 @@ export async function getSessionStats(sessionId: string) {
     throw new Error('Session not found');
   }
   
-  const totalTips = tips.reduce((sum: number, tip: ITip) => sum + tip.amount, 0);
+  const totalTips = tips.reduce((sum: number, tip: ITip) => sum + Number(tip.amount), 0);
   const uniqueParticipants = new Set([
     ...questions.map((q: IQuestion) => q.askerFid),
     ...tips.map((t: ITip) => t.senderFid)

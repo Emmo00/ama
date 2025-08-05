@@ -10,10 +10,10 @@ export const revalidate = 300;
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ fid: string }>;
+  params: Promise<{ session: string }>;
 }): Promise<Metadata> {
-  const { fid } = await params;
-  const imageUrl = `${APP_URL}/api/opengraph-image?fid=${fid}`;
+  const { session } = await params;
+  const imageUrl = `${APP_URL}/api/opengraph-image?sessionid=${session}`;
 
   return {
     title: `${APP_NAME} - Share`,
@@ -23,7 +23,7 @@ export async function generateMetadata({
       images: [imageUrl],
     },
     other: {
-      "fc:frame": JSON.stringify(getMiniAppEmbedMetadata(imageUrl)),
+      "fc:frame": JSON.stringify(getMiniAppEmbedMetadata(imageUrl, "JOIN AMA")),
     },
   };
 }

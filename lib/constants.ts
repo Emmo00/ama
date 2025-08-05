@@ -135,40 +135,48 @@ export const APP_REQUIRED_CHAINS: string[] = ["eip155:8453", "eip155:84532", "ei
 export const TIPPING_CONTRACT_ADDRESSES = {
   [base.id]: {
     address: "0x1234567890abcdef1234567890abcdef12345678", // TODO: Replace with actual deployed contract address
+    image: `${APP_URL}/base.svg`,
     tokens: [
       {
         address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
         symbol: "USDC",
+        image: `${APP_URL}/usdc.png`,
         decimals: 6,
       },
     ],
   },
   [baseSepolia.id]: {
     address: "0xc9637B71e7BFBCff7f88F03344D94ec079Cc54B8", // TODO: Replace with actual deployed contract address
+    image: `${APP_URL}/base.svg`,
     tokens: [
       {
         address: "0x9BeC29053DAD9B28F41ffEA16c7f20a16f79faA6", // Mock USDC on Base Sepolia
         symbol: "USDC",
+        image: `${APP_URL}/usdc.png`,
         decimals: 6,
       },
     ],
   },
   [celo.id]: {
     address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd", // TODO: Replace with actual deployed contract address
+    image: `${APP_URL}/celo.png`,
     tokens: [
       {
         address: "0x765DE816845861e75A25fCA122bb6898B8B1282a", // cUSD on Celo
         symbol: "cUSD",
+        image: `${APP_URL}/cusd.png`,
         decimals: 18,
       },
     ],
   },
   [celoAlfajores.id]: {
     address: "0xC2a78e1e5Df7e16AaD9156EDbd5cCac5ab1cCF95", // TODO: Replace with actual deployed contract address
+    image: `${APP_URL}/celo.png`,
     tokens: [
       {
         address: "0xb4e77b44CCa187D92660218732F2CEBABcB2E90A", // cUSD on Celo Alfajores
         symbol: "cUSD",
+        image: `${APP_URL}/cusd.png`,
         decimals: 18,
       },
     ],

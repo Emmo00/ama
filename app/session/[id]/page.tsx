@@ -327,7 +327,7 @@ export default function SessionPage() {
           {stats && (
             <div className="flex items-center space-x-6 mt-4 text-sm text-gray-600">
               <span>{stats.totalQuestions} questions</span>
-              <span>${stats.totalTips} tips</span>
+              <span>Total Tips: ${stats.totalTips}</span>
               <span>{stats.totalParticipants} participants</span>
             </div>
           )}
@@ -526,6 +526,7 @@ export default function SessionPage() {
         onClose={() => setShowTippingModal(false)}
         sessionId={sessionId}
         creatorFid={session?.creatorFid}
+        creatorUsername={session?.creatorFid ? userProfiles.get(session.creatorFid)?.username : undefined}
         onTipSuccess={(tip) => {
           setTips((prev) => [tip, ...prev]);
           if (stats) {

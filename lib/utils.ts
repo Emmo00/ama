@@ -20,7 +20,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getMiniAppEmbedMetadata(ogImageUrl?: string) {
+export function getMiniAppEmbedMetadata(ogImageUrl?: string, buttonTitle?: string) {
   return {
     version: 'next',
     imageUrl: ogImageUrl ?? APP_OG_IMAGE_URL,
@@ -28,7 +28,7 @@ export function getMiniAppEmbedMetadata(ogImageUrl?: string) {
     ogDescription: APP_DESCRIPTION,
     ogImageUrl: ogImageUrl ?? APP_OG_IMAGE_URL,
     button: {
-      title: APP_BUTTON_TEXT,
+      title: buttonTitle ?? APP_BUTTON_TEXT,
       action: {
         type: 'launch_frame',
         name: APP_NAME,
