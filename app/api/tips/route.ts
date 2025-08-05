@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get("sessionId");
     const senderFid = searchParams.get("senderFid");
+    const recipientFid = searchParams.get("recipientFid");
 
     let query: any = {};
 
@@ -25,6 +26,10 @@ export async function GET(request: NextRequest) {
 
     if (senderFid) {
       query.senderFid = senderFid;
+    }
+
+    if (recipientFid) {
+      query.recipientFid = recipientFid;
     }
 
     const tips = await Tip.find(query).sort({ createdAt: -1 }).limit(100);
@@ -44,13 +49,13 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
 
     const body = await request.json();
-    const { sessionId, senderFid, amount, txHash } = body;
+    const { sessionId, senderFid, recipientFid, amount, txHash } = body;
 
-    if (!sessionId || !senderFid || !amount || !txHash) {
+    if (!sessionId || !senderFid || !recipientFid || !amount || !txHash) {
       return NextResponse.json(
         {
           error:
-            "Missing required fields: sessionId, senderFid, amount, txHash",
+            "Missing required fields: sessionId, senderFid, recipientFid, amount, txHash",
         },
         { status: 400 }
       );
@@ -97,6 +102,7 @@ export async function POST(request: NextRequest) {
     const tip = new Tip({
       sessionId,
       senderFid,
+      recipientFid,
       amount,
       txHash,
     });
