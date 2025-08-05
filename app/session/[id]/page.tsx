@@ -10,6 +10,7 @@ import TippingModal from "@/components/tipping-modal";
 import { ArrowLeft, MessageCircle, Send, Share2 } from "lucide-react";
 import sdk from "@farcaster/miniapp-sdk";
 import { useUserProfiles } from "@/hooks/useUserProfile";
+import { APP_URL } from "@/lib/constants";
 
 interface Session {
   _id: string;
@@ -209,6 +210,20 @@ export default function SessionPage() {
     }
   };
 
+  // Handle share to Farcaster
+  const handleShareToFarcaster = () => {
+    const shareText = `Just joined an AMA session: ${session?.title} by @${
+      userProfiles.get(session?.creatorFid!)?.username || "Unknown"
+    }`;
+    if (!sessionId) return;
+
+    // Open Farcaster share
+    sdk.actions.composeCast({
+      text: shareText,
+      embeds: [`${APP_URL}/share/${sessionId}`], // Use current page URL as embed
+    });
+  };
+
   const handleEndSession = async () => {
     if (!currentUserFid || !isHost) return;
 
@@ -301,7 +316,12 @@ export default function SessionPage() {
                   💰 Send Tip
                 </Button>
               )}
-              <Button variant="outline" size="sm" className="text-black">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-black"
+                onClick={handleShareToFarcaster}
+              >
                 <Share2 className="w-4 h-4 mr-2" />
                 Share
               </Button>
@@ -526,7 +546,11 @@ export default function SessionPage() {
         onClose={() => setShowTippingModal(false)}
         sessionId={sessionId}
         creatorFid={session?.creatorFid}
-        creatorUsername={session?.creatorFid ? userProfiles.get(session.creatorFid)?.username : undefined}
+        creatorUsername={
+          session?.creatorFid
+            ? userProfiles.get(session.creatorFid)?.username
+            : undefined
+        }
         onTipSuccess={(tip) => {
           setTips((prev) => [tip, ...prev]);
           if (stats) {
@@ -534,7 +558,7 @@ export default function SessionPage() {
               prev
                 ? {
                     ...prev,
-                    totalTips: prev.totalTips + tip.amount,
+                    totalTips: prev.totalTips + Number(tip.amount),
                   }
                 : null
             );
