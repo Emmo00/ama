@@ -4,6 +4,7 @@ export interface UserProfile {
   fid: string;
   username: string;
   pfpUrl?: string;
+  walletAddress?: string;
 }
 
 // Cache to store user profiles to avoid duplicate requests

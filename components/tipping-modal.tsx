@@ -12,36 +12,125 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Check, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import sdk from "@farcaster/miniapp-sdk";
+import { useWriteContract, useAccount, useChainId, useWaitForTransactionReceipt, useConnect } from "wagmi";
+import { parseUnits, type Address } from "viem";
+import { TIPPING_CONTRACT_ADDRESSES } from "@/lib/constants";
+import AMATippingABI from "@/abis/AMATipping.json";
+import ERC20ABI from "@/abis/ERC20.json";
 
 interface TippingModalProps {
   isOpen: boolean;
   onClose: () => void;
   sessionId: string;
+  creatorAddress?: string; // The creator's wallet address to receive tips
   onTipSuccess?: (tip: any) => void;
 }
+
+type TippingStep = 'input' | 'approve' | 'tip' | 'success';
 
 export default function TippingModal({
   isOpen,
   onClose,
   sessionId,
+  creatorAddress,
   onTipSuccess,
 }: TippingModalProps) {
   const [amount, setAmount] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [currentStep, setCurrentStep] = useState<TippingStep>('input');
   const [error, setError] = useState<string | null>(null);
+  
+  const { address } = useAccount();
+  const chainId = useChainId();
+  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { connect, connectors } = useConnect();
+  
+  // Get contract config for current chain
+  const contractConfig = TIPPING_CONTRACT_ADDRESSES[chainId as keyof typeof TIPPING_CONTRACT_ADDRESSES];
+  const tokenConfig = contractConfig?.tokens[0]; // Use first token (USDC)
+  
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!amount || Number.parseFloat(amount) <= 0) return;
+  // Save wallet address when connected
+  useEffect(() => {
+    const saveWalletAddress = async () => {
+      if (address) {
+        try {
+          await fetch("/api/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ walletAddress: address }),
+          });
+        } catch (error) {
+          console.error("Error saving wallet address:", error);
+        }
+      }
+    };
+    
+    saveWalletAddress();
+  }, [address]);
 
-    setIsLoading(true);
-    setError(null);
+  useEffect(() => {
+    if (isConfirmed && hash) {
+      handleTransactionSuccess(hash);
+    }
+  }, [isConfirmed, hash]);
 
+  const handleApprove = async () => {
+    if (!tokenConfig || !contractConfig || !address) return;
+    
     try {
-      // Get user context
+      setError(null);
+      setCurrentStep('approve');
+      
+      const amountInWei = parseUnits(amount, tokenConfig.decimals);
+      
+      writeContract({
+        address: tokenConfig.address as Address,
+        abi: ERC20ABI,
+        functionName: 'approve',
+        args: [contractConfig.address, amountInWei],
+      });
+    } catch (err) {
+      console.error("Error approving token:", err);
+      setError(err instanceof Error ? err.message : "Failed to approve token");
+      setCurrentStep('input');
+    }
+  };
+
+  const handleTip = async () => {
+    if (!tokenConfig || !contractConfig || !address || !creatorAddress) return;
+    
+    try {
+      setError(null);
+      setCurrentStep('tip');
+      
+      const amountInWei = parseUnits(amount, tokenConfig.decimals);
+      
+      writeContract({
+        address: contractConfig.address as Address,
+        abi: AMATippingABI,
+        functionName: 'tip',
+        args: [
+          BigInt(sessionId),
+          creatorAddress as Address,
+          tokenConfig.address as Address,
+          amountInWei
+        ],
+      });
+    } catch (err) {
+      console.error("Error sending tip:", err);
+      setError(err instanceof Error ? err.message : "Failed to send tip");
+      setCurrentStep('input');
+    }
+  };
+
+  const handleTransactionSuccess = async (txHash: string) => {
+    try {
+      // Get user context for API call
       const context = await sdk.context;
       const userFid = context?.user?.fid?.toString();
       const username = context?.user?.username;
@@ -60,10 +149,7 @@ export default function TippingModal({
         // User might already exist
       });
 
-      // For now, we'll simulate a transaction hash
-      // In a real implementation, this would come from an actual blockchain transaction
-      const mockTxHash = `0x${Math.random().toString(16).substring(2, 66)}`;
-
+      // Record the tip in the database
       const response = await fetch("/api/tips", {
         method: "POST",
         headers: {
@@ -73,40 +159,64 @@ export default function TippingModal({
           sessionId,
           senderFid: userFid,
           amount: Number.parseFloat(amount),
-          txHash: mockTxHash,
+          txHash: txHash,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to send tip");
+        throw new Error(errorData.error || "Failed to record tip");
       }
 
       const { tip } = await response.json();
-
-      setIsSuccess(true);
+      
+      setCurrentStep('success');
       onTipSuccess?.(tip);
 
-      // Auto close after 2 seconds
+      // Auto close after 3 seconds
       setTimeout(() => {
         handleClose();
-      }, 2000);
+      }, 3000);
     } catch (err) {
-      console.error("Error sending tip:", err);
-      setError(err instanceof Error ? err.message : "Failed to send tip");
-    } finally {
-      setIsLoading(false);
+      console.error("Error recording tip:", err);
+      setError(err instanceof Error ? err.message : "Failed to record tip");
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!amount || Number.parseFloat(amount) <= 0) return;
+    if (!contractConfig || !tokenConfig) {
+      setError("Tipping not supported on this network");
+      return;
+    }
+    if (!creatorAddress) {
+      setError("Creator address not available");
+      return;
+    }
+    
+    // Start with token approval
+    handleApprove();
+  };
+
+  // Continue with tip after approval is confirmed
+  useEffect(() => {
+    if (isConfirmed && currentStep === 'approve') {
+      handleTip();
+    }
+  }, [isConfirmed, currentStep]);
+
   const handleClose = () => {
-    if (!isLoading) {
+    if (!isPending && !isConfirming) {
       setAmount("");
-      setIsSuccess(false);
+      setCurrentStep('input');
       setError(null);
       onClose();
     }
   };
+
+  const isLoading = isPending || isConfirming;
+  const isSuccess = currentStep === 'success';
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -136,8 +246,13 @@ export default function TippingModal({
                 Tip Sent!
               </h3>
               <p className="text-gray-600">
-                Your tip of ${amount} has been sent successfully!
+                Your tip of {amount} {tokenConfig?.symbol || 'USDC'} has been sent successfully!
               </p>
+              {hash && (
+                <p className="text-xs text-gray-500 mt-2 break-all">
+                  Transaction: {hash}
+                </p>
+              )}
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -147,19 +262,55 @@ export default function TippingModal({
                 </div>
               )}
 
+              {!contractConfig && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-700">
+                    Tipping is not supported on this network. Please switch to a supported network.
+                  </p>
+                </div>
+              )}
+
+              {!address && contractConfig && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700 mb-3">
+                    Connect your wallet to send tips.
+                  </p>
+                  <div className="space-y-2">
+                    {connectors.map((connector) => (
+                      <Button
+                        key={connector.id}
+                        onClick={() => connect({ connector })}
+                        variant="outline"
+                        className="w-full text-sm"
+                      >
+                        Connect {connector.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!creatorAddress && address && contractConfig && (
+                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <p className="text-sm text-orange-700">
+                    Creator address not available. Cannot send tip.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label
                   htmlFor="amount"
                   className="text-sm font-medium text-black"
                 >
-                  Enter amount in USDC
+                  Enter amount in {tokenConfig?.symbol || 'USDC'}
                 </Label>
                 <div className="relative">
                   <Input
                     id="amount"
                     type="number"
-                    step="0.01"
-                    min="0.01"
+                    step={tokenConfig?.decimals === 6 ? "0.000001" : "0.01"}
+                    min={tokenConfig?.decimals === 6 ? "0.000001" : "0.01"}
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
@@ -168,29 +319,53 @@ export default function TippingModal({
                     required
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                    USDC
+                    {tokenConfig?.symbol || 'USDC'}
                   </div>
                 </div>
               </div>
+
+              {currentStep !== 'input' && (
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-blue-900">
+                      {currentStep === 'approve' && 'Approving token...'}
+                      {currentStep === 'tip' && 'Sending tip...'}
+                    </span>
+                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-700">
                   <strong>Support creators</strong> by tipping them for their
                   valuable insights and time spent answering questions.
                 </p>
+                {contractConfig && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Platform fee: 10% • Token: {tokenConfig?.symbol}
+                  </p>
+                )}
               </div>
 
               <Button
                 type="submit"
                 disabled={
-                  !amount || Number.parseFloat(amount) <= 0 || isLoading
+                  !amount || 
+                  Number.parseFloat(amount) <= 0 || 
+                  isLoading || 
+                  !contractConfig ||
+                  !address ||
+                  !creatorAddress
                 }
                 className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="flex items-center">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Processing...
+                    {currentStep === 'approve' && 'Approving...'}
+                    {currentStep === 'tip' && 'Sending Tip...'}
+                    {currentStep === 'input' && 'Processing...'}
                   </div>
                 ) : (
                   "Send Tip"

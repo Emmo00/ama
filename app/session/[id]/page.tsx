@@ -337,7 +337,7 @@ export default function SessionPage() {
           {/* Questions Column */}
           <div className="lg:col-span-2 space-y-6">
             {/* Ask Question Form */}
-            {session.status === "LIVE" && currentUserFid && (
+            {session.status === "LIVE" && currentUserFid && !isHost && (
               <Card>
                 <CardContent className="p-6">
                   <h3 className="font-semibold text-black mb-4">
@@ -458,19 +458,21 @@ export default function SessionPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Tip Button */}
-            <Card>
-              <CardContent className="p-6 text-center">
-                <h3 className="font-semibold text-black mb-4">
-                  Support the Creator
-                </h3>
-                <Button
-                  onClick={() => setShowTippingModal(true)}
-                  className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600"
-                >
-                  💰 Send Tip
-                </Button>
-              </CardContent>
-            </Card>
+            {isHost && (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <h3 className="font-semibold text-black mb-4">
+                    Support the Creator
+                  </h3>
+                  <Button
+                    onClick={() => setShowTippingModal(true)}
+                    className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600"
+                  >
+                    💰 Send Tip
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Recent Tips */}
             {tips.length > 0 && (
@@ -523,6 +525,7 @@ export default function SessionPage() {
         isOpen={showTippingModal}
         onClose={() => setShowTippingModal(false)}
         sessionId={sessionId}
+        creatorAddress={session?.creatorFid ? userProfiles.get(session.creatorFid)?.walletAddress : undefined}
         onTipSuccess={(tip) => {
           setTips((prev) => [tip, ...prev]);
           if (stats) {
