@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/Button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowLeft, Calendar, MessageCircle, Clock, User, Loader2, RefreshCw, DollarSign } from "lucide-react"
 import Link from "next/link"
