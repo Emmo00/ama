@@ -525,7 +525,7 @@ export default function SessionPage() {
         isOpen={showTippingModal}
         onClose={() => setShowTippingModal(false)}
         sessionId={sessionId}
-        creatorAddress={session?.creatorFid ? userProfiles.get(session.creatorFid)?.walletAddress : undefined}
+        creatorFid={session?.creatorFid}
         onTipSuccess={(tip) => {
           setTips((prev) => [tip, ...prev]);
           if (stats) {

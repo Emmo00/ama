@@ -2,6 +2,7 @@
 
 import { MiniAppProvider } from "@neynar/react";
 import { ANALYTICS_ENABLED } from "@/lib/constants";
+import WagmiProvider from "@/components/providers/WagmiProvider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -9,7 +10,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       analyticsEnabled={ANALYTICS_ENABLED}
       backButtonEnabled={true}
     >
-      {children}
+      <WagmiProvider>{children}</WagmiProvider>
     </MiniAppProvider>
   );
 }

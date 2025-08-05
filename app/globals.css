@@ -116,3 +116,17 @@ body {
     @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
   }
 }
+
+/* Hide browser extension overlays in development */
+@media (prefers-color-scheme: light), (prefers-color-scheme: dark) {
+  /* Hide Grammarly overlays that cause hydration mismatches */
+  grammarly-extension,
+  grammarly-popups {
+    display: none !important;
+  }
+  
+  /* Prevent Grammarly from interfering with inputs */
+  [data-grammarly-extension] {
+    display: none !important;
+  }
+}

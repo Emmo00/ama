@@ -24,7 +24,7 @@ interface TippingModalProps {
   isOpen: boolean;
   onClose: () => void;
   sessionId: string;
-  creatorAddress?: string; // The creator's wallet address to receive tips
+  creatorFid?: string; // The creator's Farcaster ID to fetch wallet address
   onTipSuccess?: (tip: any) => void;
 }
 
@@ -34,12 +34,14 @@ export default function TippingModal({
   isOpen,
   onClose,
   sessionId,
-  creatorAddress,
+  creatorFid,
   onTipSuccess,
 }: TippingModalProps) {
   const [amount, setAmount] = useState("");
   const [currentStep, setCurrentStep] = useState<TippingStep>('input');
   const [error, setError] = useState<string | null>(null);
+  const [creatorAddress, setCreatorAddress] = useState<string | null>(null);
+  const [isFetchingAddress, setIsFetchingAddress] = useState(false);
   
   const { address } = useAccount();
   const chainId = useChainId();
@@ -72,6 +74,40 @@ export default function TippingModal({
     
     saveWalletAddress();
   }, [address]);
+
+  // Fetch creator's wallet address from Farcaster API
+  useEffect(() => {
+    const fetchCreatorAddress = async () => {
+      if (!creatorFid || !isOpen) return;
+      
+      setIsFetchingAddress(true);
+      try {
+        const response = await fetch(
+          `https://api.farcaster.xyz/fc/primary-address?fid=${creatorFid}&protocol=ethereum`
+        );
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch creator address');
+        }
+        
+        const data = await response.json();
+        const address = data?.result?.address?.address;
+        
+        if (address) {
+          setCreatorAddress(address);
+        } else {
+          throw new Error('Creator has no verified Ethereum address');
+        }
+      } catch (err) {
+        console.error('Error fetching creator address:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch creator address');
+      } finally {
+        setIsFetchingAddress(false);
+      }
+    };
+
+    fetchCreatorAddress();
+  }, [creatorFid, isOpen]);
 
   useEffect(() => {
     if (isConfirmed && hash) {
@@ -207,15 +243,16 @@ export default function TippingModal({
   }, [isConfirmed, currentStep]);
 
   const handleClose = () => {
-    if (!isPending && !isConfirming) {
+    if (!isPending && !isConfirming && !isFetchingAddress) {
       setAmount("");
       setCurrentStep('input');
       setError(null);
+      setCreatorAddress(null);
       onClose();
     }
   };
 
-  const isLoading = isPending || isConfirming;
+  const isLoading = isPending || isConfirming || isFetchingAddress;
   const isSuccess = currentStep === 'success';
 
   return (
@@ -290,11 +327,22 @@ export default function TippingModal({
                 </div>
               )}
 
-              {!creatorAddress && address && contractConfig && (
+              {!creatorAddress && address && contractConfig && !isFetchingAddress && (
                 <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                   <p className="text-sm text-orange-700">
-                    Creator address not available. Cannot send tip.
+                    Creator has no verified Ethereum address on Farcaster. Cannot send tip.
                   </p>
+                </div>
+              )}
+
+              {isFetchingAddress && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm text-blue-700">
+                      Fetching creator's verified address...
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -354,6 +402,7 @@ export default function TippingModal({
                   !amount || 
                   Number.parseFloat(amount) <= 0 || 
                   isLoading || 
+                  isFetchingAddress ||
                   !contractConfig ||
                   !address ||
                   !creatorAddress
