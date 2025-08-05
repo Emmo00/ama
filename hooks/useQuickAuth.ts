@@ -31,9 +31,7 @@ export function useQuickAuth(): QuickAuthState {
         setState(prev => ({ ...prev, isLoading: true, error: null }));
 
         // Use the Farcaster SDK's Quick Auth to make authenticated requests
-        const response = await sdk.quickAuth.fetch('/api/auth/me', {
-          method: 'GET',
-        });
+        const response = await sdk.quickAuth.fetch('/api/auth/me');
 
         if (response.ok) {
           const userData = await response.json();
