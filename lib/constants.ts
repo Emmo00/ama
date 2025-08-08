@@ -74,8 +74,13 @@ export const APP_SPLASH_BACKGROUND_COLOR: string = "#ffffff";
  * Used to associate the mini app with a Farcaster account.
  * If not provided, the mini app will be unsigned and have limited capabilities.
  */
-export const APP_ACCOUNT_ASSOCIATION: AccountAssociation | undefined =
-  undefined;
+export const APP_ACCOUNT_ASSOCIATION: AccountAssociation | undefined = {
+  header:
+    "eyJmaWQiOjg5MTM2MSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDIxRDE3N0ZmNzkzYkI4OGYyODAwZTlEYjFEMDVERDI3MzA0NkEzMzgifQ",
+  payload: "eyJkb21haW4iOiJhbWEtbWluaWFwcC52ZXJjZWwuYXBwIn0",
+  signature:
+    "MHg5YjJmYTA2OGNhOTdhMGViNmNhMjRhZDc0MGZiMTBmMDE5MjQyYzk4MjI5NzZkOWExYTkyZGIzZGRiYmZiNDRkMDNjYzNmZmI1OTdiMGEyOTMwYWUwYzA4NmM0NzdiOTBmNTEyZDQ3YTk3NzYyNjk0NWUzNzQ3NjA0MmExZTcxNjFj",
+};
 
 // --- UI Configuration ---
 /**
@@ -125,7 +130,12 @@ export const ANALYTICS_ENABLED = false;
  * Supported chains: eip155:1, eip155:137, eip155:42161, eip155:10, eip155:8453,
  * solana:mainnet, solana:devnet
  */
-export const APP_REQUIRED_CHAINS: string[] = ["eip155:8453", "eip155:84532", "eip155:42220", "eip155:44787"];
+export const APP_REQUIRED_CHAINS: string[] = [
+  "eip155:8453",
+  "eip155:84532",
+  "eip155:42220",
+  "eip155:44787",
+];
 
 /**
  * List of tipping contracts based on chain.
