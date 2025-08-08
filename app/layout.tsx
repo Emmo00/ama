@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { APP_URL, APP_NAME, APP_DESCRIPTION } from "@/lib/constants";
 import { Providers } from "./providers";
-import { getFarcasterDomainManifest } from "@/lib/utils";
+import { getMiniAppEmbedMetadata } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     description: APP_DESCRIPTION,
   },
   other: {
-    "fc:frame": JSON.stringify(getFarcasterDomainManifest()),
+    "fc:frame": JSON.stringify(getMiniAppEmbedMetadata()),
   },
 };
 
