@@ -198,7 +198,17 @@ export default function TippingModal({
   }, [isConfirmed, hash, currentStep]);
 
   const handleApprove = async () => {
-    if (!tokenConfig || !contractConfig || !address) return;
+    if (!address) {
+      console.log("Connecting wallet...");
+      connect({ connector: connectors[0] });
+      return;
+    }
+
+    if (!tokenConfig || !contractConfig || !address) {
+      console.log("Missing token or contract configuration");
+      setError("Missing token or contract configuration");
+      return;
+    }
 
     try {
       setError(null);
@@ -381,7 +391,9 @@ export default function TippingModal({
     if (!tipHash || !selectedChainId || !tokenConfig) return;
 
     const blockExplorerUrl = getBlockExplorerUrl(tipHash, selectedChainId);
-    const displayName = creatorUsername ? `@${creatorUsername}` : `user ${creatorFid}`;
+    const displayName = creatorUsername
+      ? `@${creatorUsername}`
+      : `user ${creatorFid}`;
     const shareText = `Just tipped ${amount} ${tokenConfig.symbol} to ${displayName} on AMA!`;
 
     // Open Farcaster share
@@ -406,15 +418,6 @@ export default function TippingModal({
           <DialogTitle className="text-xl font-semibold text-black text-center">
             Send Tip
           </DialogTitle>
-          {/* <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-0 top-0 h-6 w-6 rounded-full hover:bg-gray-100"
-            onClick={handleClose}
-            disabled={isLoading}
-          >
-            <X className="h-4 w-4" />
-          </Button> */}
         </DialogHeader>
 
         <div className="py-6">

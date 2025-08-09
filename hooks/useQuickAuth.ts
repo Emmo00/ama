@@ -18,17 +18,16 @@ interface QuickAuthState {
 }
 
 export function useQuickAuth(): QuickAuthState {
-  const [state, setState] = useState<QuickAuthState>({
-    user: null,
-    isLoading: true,
-    error: null,
-    isAuthenticated: false,
-  });
+  const [user, setUser] = useState<QuickAuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   useEffect(() => {
     const authenticateUser = async () => {
       try {
-        setState(prev => ({ ...prev, isLoading: true, error: null }));
+        setIsLoading(true);
+        setError(null);
         console.log("Fetching user data...",);
 
         // Use the Farcaster SDK's Quick Auth to make authenticated requests
@@ -38,34 +37,33 @@ export function useQuickAuth(): QuickAuthState {
 
         if (response.ok) {
           const userData = await response.json();
-          setState({
-            user: userData,
-            isLoading: false,
-            error: null,
-            isAuthenticated: true,
-          });
+          setUser(userData);
+          setIsLoading(false);
+          setError(null);
+          setIsAuthenticated(true);
         } else {
           const errorData = await response.json().catch(() => ({}));
-          setState({
-            user: null,
-            isLoading: false,
-            error: errorData.message || 'Authentication failed',
-            isAuthenticated: false,
-          });
+          setUser(null);
+          setIsLoading(false);
+          setError(errorData.message || 'Authentication failed');
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('Quick Auth error:', error);
-        setState({
-          user: null,
-          isLoading: false,
-          error: error instanceof Error ? error.message : 'Authentication failed',
-          isAuthenticated: false,
-        });
+        setUser(null);
+        setIsLoading(false);
+        setError(error instanceof Error ? error.message : 'Authentication failed');
+        setIsAuthenticated(false);
       }
     };
 
     authenticateUser();
   }, []);
 
-  return state;
+  return {
+    user,
+    isLoading,
+    error,
+    isAuthenticated,
+  };
 }

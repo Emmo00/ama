@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import sdk from "@farcaster/miniapp-sdk";
+import { set } from 'mongoose';
 
 export interface Session {
   _id: string;
@@ -41,11 +42,14 @@ export function useSessions() {
       const params = new URLSearchParams();
       if (status) params.append('status', status);
       if (creatorFid) params.append('creatorFid', creatorFid);
-      
+
+      console.log("Fetching sessions:", params.toString());
       const response = await fetch(`/api/sessions?${params}`);
+      console.log("Response received:", response);
       const data = await response.json();
       
       if (!response.ok) {
+        setError(data.error || 'Failed to fetch sessions');
         throw new Error(data.error || 'Failed to fetch sessions');
       }
       
