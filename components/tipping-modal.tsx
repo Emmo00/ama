@@ -210,6 +210,7 @@ export default function TippingModal({
       return;
     }
 
+    console.log("Approving token send transaction ...");
     try {
       setError(null);
       setCurrentStep("approve");
@@ -342,7 +343,7 @@ export default function TippingModal({
 
     // Start with token approval
     console.log("approving token send");
-    handleApprove();
+    await handleApprove();
   };
 
   // Continue with tip after approval is confirmed
