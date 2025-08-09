@@ -478,7 +478,7 @@ export default function SessionPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Tip Button */}
-            {isHost && (
+            {!isHost && (
               <Card>
                 <CardContent className="p-6 text-center">
                   <h3 className="font-semibold text-black mb-4">
