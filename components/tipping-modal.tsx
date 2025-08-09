@@ -65,7 +65,7 @@ export default function TippingModal({
 
   const { address } = useAccount();
   const chainId = useChainId();
-  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { writeContract, data: hash, isPending, error: contractError } = useWriteContract();
   const { connect, connectors } = useConnect();
   const { switchChain } = useSwitchChain();
 
@@ -91,10 +91,13 @@ export default function TippingModal({
     chainId: selectedChainId || undefined,
   });
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({
-      hash,
-    });
+  const { 
+    isLoading: isConfirming, 
+    isSuccess: isConfirmed,
+    error: receiptError
+  } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   // Save wallet address when connected
   useEffect(() => {
@@ -176,6 +179,7 @@ export default function TippingModal({
 
   // Handle back navigation
   const handleBack = () => {
+    setError(null); // Clear errors when navigating back
     if (currentStep === "token-selection") {
       setCurrentStep("chain-selection");
       setSelectedChainId(null);
@@ -197,6 +201,36 @@ export default function TippingModal({
     }
   }, [isConfirmed, hash, currentStep]);
 
+  // Handle wagmi contract errors (e.g., user rejection, failed transactions)
+  useEffect(() => {
+    if (contractError) {
+      console.error("Contract error:", contractError);
+      let errorMessage = "Transaction failed";
+      
+      if (contractError.message.includes("User rejected")) {
+        errorMessage = "Transaction was rejected by user";
+      } else if (contractError.message.includes("insufficient funds")) {
+        errorMessage = "Insufficient funds for transaction";
+      } else if (contractError.message.includes("execution reverted")) {
+        errorMessage = "Transaction failed - contract execution reverted";
+      } else if (contractError.message) {
+        errorMessage = contractError.message;
+      }
+      
+      setError(errorMessage);
+      setCurrentStep("amount-input");
+    }
+  }, [contractError]);
+
+  // Handle transaction receipt errors
+  useEffect(() => {
+    if (receiptError) {
+      console.error("Receipt error:", receiptError);
+      setError("Transaction failed or was reverted");
+      setCurrentStep("amount-input");
+    }
+  }, [receiptError]);
+
   const handleApprove = async () => {
     if (!address) {
       console.log("Connecting wallet...");
@@ -215,7 +249,7 @@ export default function TippingModal({
     console.log("contractConfig:", contractConfig);
     console.log("address:", address);
     try {
-      setError(null);
+      setError(null); // Clear any previous errors
       setCurrentStep("approve");
 
       const amountInWei = parseUnits(amount, tokenConfig.decimals);
@@ -228,7 +262,19 @@ export default function TippingModal({
       });
     } catch (err) {
       console.error("Error approving token:", err);
-      setError(err instanceof Error ? err.message : "Failed to approve token");
+      let errorMessage = "Failed to approve token";
+      
+      if (err instanceof Error) {
+        if (err.message.includes("User rejected")) {
+          errorMessage = "Token approval was rejected by user";
+        } else if (err.message.includes("insufficient funds")) {
+          errorMessage = "Insufficient funds for approval transaction";
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
       setCurrentStep("amount-input");
     }
   };
@@ -237,7 +283,7 @@ export default function TippingModal({
     if (!tokenConfig || !contractConfig || !address || !creatorAddress) return;
 
     try {
-      setError(null);
+      setError(null); // Clear any previous errors
       setCurrentStep("tip");
 
       const amountInWei = parseUnits(amount, tokenConfig.decimals);
@@ -260,7 +306,19 @@ export default function TippingModal({
       });
     } catch (err) {
       console.error("Error sending tip:", err);
-      setError(err instanceof Error ? err.message : "Failed to send tip");
+      let errorMessage = "Failed to send tip";
+      
+      if (err instanceof Error) {
+        if (err.message.includes("User rejected")) {
+          errorMessage = "Tip transaction was rejected by user";
+        } else if (err.message.includes("insufficient funds")) {
+          errorMessage = "Insufficient funds for tip transaction";
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
       setCurrentStep("amount-input");
     }
   };
@@ -364,6 +422,11 @@ export default function TippingModal({
       setTipHash(null);
       onClose();
     }
+  };
+
+  // Reset error when user navigates back to amount input
+  const resetError = () => {
+    setError(null);
   };
 
   const isLoading = isPending || isConfirming || isFetchingAddress;
@@ -836,6 +899,21 @@ export default function TippingModal({
                   {approveHash && currentStep === "tip" && (
                     <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-xs">
                       <span className="text-green-700">✓ Token approved</span>
+                    </div>
+                  )}
+
+                  {/* Show transaction errors */}
+                  {error && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-600">{error}</p>
+                      <Button
+                        onClick={() => setCurrentStep("amount-input")}
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        Go Back
+                      </Button>
                     </div>
                   )}
                 </div>
