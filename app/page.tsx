@@ -249,9 +249,3 @@ export default function Home() {
     </div>
   );
 }
-
-// Mock user data for the profile icon
-const mockCurrentUser = {
-  username: "vitalik.eth",
-  avatar: "V",
-};
