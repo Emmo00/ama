@@ -211,6 +211,9 @@ export default function TippingModal({
     }
 
     console.log("Approving token send transaction ...");
+    console.log("tokenConfig:", tokenConfig);
+    console.log("contractConfig:", contractConfig);
+    console.log("address:", address);
     try {
       setError(null);
       setCurrentStep("approve");
