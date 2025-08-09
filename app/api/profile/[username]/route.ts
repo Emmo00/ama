@@ -43,30 +43,36 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Get stats for current session if exists
     let currentSessionStats = null;
     if (currentSession) {
-      const [currentQuestions, currentTips] = await Promise.all([
+      const [currentQuestions, currentTipAmount] = await Promise.all([
         Question.countDocuments({ sessionId: currentSession._id }),
-        Tip.countDocuments({ sessionId: currentSession._id })
+        Tip.aggregate([
+          { $match: { sessionId: currentSession._id } },
+          { $group: { _id: null, total: { $sum: '$amount' } } }
+        ])
       ]);
       
       currentSessionStats = {
         totalQuestions: currentQuestions,
-        totalTips: currentTips
+        totalTips: currentTipAmount.length > 0 ? currentTipAmount[0].total : 0
       };
     }
 
     // Get stats for each past session
     const pastSessionsWithStats = await Promise.all(
       pastSessions.map(async (session) => {
-        const [questionCount, tipCount] = await Promise.all([
+        const [questionCount, tipAmount] = await Promise.all([
           Question.countDocuments({ sessionId: session._id }),
-          Tip.countDocuments({ sessionId: session._id })
+          Tip.aggregate([
+            { $match: { sessionId: session._id } },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+          ])
         ]);
         
         return {
           ...session.toObject(),
           stats: {
             totalQuestions: questionCount,
-            totalTips: tipCount
+            totalTips: tipAmount.length > 0 ? tipAmount[0].total : 0
           }
         };
       })

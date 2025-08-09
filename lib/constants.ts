@@ -144,7 +144,7 @@ export const APP_REQUIRED_CHAINS: string[] = [
  */
 export const TIPPING_CONTRACT_ADDRESSES = {
   [base.id]: {
-    address: "0x1234567890abcdef1234567890abcdef12345678", // TODO: Replace with actual deployed contract address
+    address: "0xd05B04D451A1A2a310F037D17A15548045722D3A",
     image: `${APP_URL}/base.svg`,
     tokens: [
       {
@@ -156,7 +156,7 @@ export const TIPPING_CONTRACT_ADDRESSES = {
     ],
   },
   [baseSepolia.id]: {
-    address: "0xc9637B71e7BFBCff7f88F03344D94ec079Cc54B8", // TODO: Replace with actual deployed contract address
+    address: "0xc9637B71e7BFBCff7f88F03344D94ec079Cc54B8",
     image: `${APP_URL}/base.svg`,
     tokens: [
       {
@@ -168,7 +168,7 @@ export const TIPPING_CONTRACT_ADDRESSES = {
     ],
   },
   [celo.id]: {
-    address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd", // TODO: Replace with actual deployed contract address
+    address: "0xAe97ec403b7a6C68623801CF991CDB212119eD07",
     image: `${APP_URL}/celo.png`,
     tokens: [
       {
@@ -180,7 +180,7 @@ export const TIPPING_CONTRACT_ADDRESSES = {
     ],
   },
   [celoAlfajores.id]: {
-    address: "0xC2a78e1e5Df7e16AaD9156EDbd5cCac5ab1cCF95", // TODO: Replace with actual deployed contract address
+    address: "0xC2a78e1e5Df7e16AaD9156EDbd5cCac5ab1cCF95", 
     image: `${APP_URL}/celo.png`,
     tokens: [
       {
